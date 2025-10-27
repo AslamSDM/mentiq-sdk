@@ -1,117 +1,311 @@
 # MentiQ Analytics SDK
 
-A lightweight, type-safe analytics SDK for React and Next.js applications. Track user events, page views, and user behavior with ease.
+A powerful, lightweight analytics SDK for React and Next.js applications with advanced features like event queuing, batching, heatmap tracking, session monitoring, and performance analytics.
 
-## Features
+## 🌟 Features
 
-- 🚀 **Lightweight** - Minimal bundle size
-- 🎯 **Type-safe** - Full TypeScript support
-- ⚛️ **React-first** - Built-in hooks and components
-- 🔄 **Next.js ready** - App Router and Pages Router support
-- 📦 **Auto-batching** - Efficient event queuing and sending
-- 🛡️ **Privacy-focused** - GDPR compliant, local storage only
-- 🎛️ **Flexible** - Multiple providers, custom events
-- 📊 **Rich context** - Automatic page, user, and session tracking
+### Core Analytics
+- 🎯 Event tracking with custom properties
+- 📄 Page view tracking with auto-tracking
+- 👤 User identification and management
+- 🔄 Event batching and queuing with retry logic
+- 📱 Session management and monitoring
 
-## Installation
+### Advanced Features
+- 🔥 **Heatmap Tracking**: Click, hover, and scroll tracking
+- 📊 **Session Monitoring**: User activity, scroll depth, engagement metrics
+- ⚡ **Performance Tracking**: Core Web Vitals, custom performance metrics
+- 🚨 **Error Tracking**: JavaScript errors, unhandled rejections, React errors
+- 🎭 **React Components**: Pre-built tracking components and HOCs
+
+### Technical Features
+- 📦 Event queuing with configurable batch sizes
+- 🔄 Automatic retry with exponential backoff
+- 🏪 Local storage for offline support
+- 🎣 React hooks for easy integration
+- 📱 TypeScript support with full type safety
+- 🚀 Next.js optimized utilities
+
+## 📦 Installation
 
 ```bash
 npm install mentiq-sdk
 # or
 yarn add mentiq-sdk
-# or
-pnpm add mentiq-sdk
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### Basic Usage
-
-```typescript
-import { init, track, page, identify } from "mentiq-sdk";
-
-// Initialize the SDK
-init({
-  apiKey: "your-api-key",
-  debug: true, // Enable debug mode in development
-});
-
-// Track events
-track("button_clicked", {
-  button_id: "signup",
-  location: "header",
-});
-
-// Track page views
-page({
-  title: "Home Page",
-  category: "marketing",
-});
-
-// Identify users
-identify("user-123", {
-  email: "user@example.com",
-  plan: "premium",
-});
-```
-
-### React Integration
+### Basic Setup
 
 ```tsx
-import React from "react";
-import { AnalyticsProvider, useAnalytics } from "mentiq-sdk";
+import React from 'react';
+import { AnalyticsProvider } from 'mentiq-sdk';
 
-// Wrap your app with AnalyticsProvider
 function App() {
   return (
-    <AnalyticsProvider
+    <AnalyticsProvider 
       config={{
-        apiKey: "your-api-key",
-        debug: process.env.NODE_ENV === "development",
+        apiKey: 'your-api-key', // Your Mentiq API Key
+        projectId: 'your-project-id', // Your Mentiq Project ID
+        endpoint: 'https://your-endpoint.com/events',
+        enableHeatmapTracking: true,
+        enableSessionRecording: true,
+        enableErrorTracking: true,
+        batchSize: 10,
+        flushInterval: 5000,
       }}
     >
-      <MyComponent />
+      <YourApp />
     </AnalyticsProvider>
   );
 }
+```
 
-// Use analytics in components
+### Using Hooks
+
+```tsx
+import React from 'react';
+import { useAnalytics, useSessionTracking } from 'mentiq-sdk';
+
 function MyComponent() {
-  const { track, page, identify } = useAnalytics();
+  const { track, trackError } = useAnalytics();
+  const { sessionData } = useSessionTracking();
 
-  const handleClick = () => {
-    track("cta_clicked", {
-      cta_text: "Get Started",
-      page_section: "hero",
+  const handleButtonClick = () => {
+    track('button_clicked', {
+      button_id: 'hero-cta',
+      user_plan: 'premium'
     });
   };
 
-  return <button onClick={handleClick}>Get Started</button>;
+  return (
+    <div>
+      <button onClick={handleButtonClick}>Track Me!</button>
+      <p>Session duration: {sessionData?.duration}ms</p>
+    </div>
+  );
 }
 ```
 
-### Next.js Integration
-
-#### App Router
+## ⚙️ Configuration
 
 ```tsx
-// app/layout.tsx
-import { AnalyticsProvider } from "mentiq-sdk";
+interface AnalyticsConfig {
+  apiKey: string;
+  projectId: string;
+  endpoint?: string;
+  debug?: boolean;
+  userId?: string;
+  sessionTimeout?: number;           // Default: 30 minutes
+  batchSize?: number;               // Default: 20 events
+  flushInterval?: number;           // Default: 10 seconds
+  enableAutoPageTracking?: boolean; // Default: true
+  enablePerformanceTracking?: boolean;
+  enableHeatmapTracking?: boolean;
+  enableSessionRecording?: boolean;
+  enableErrorTracking?: boolean;
+  maxQueueSize?: number;            // Default: 1000
+  retryAttempts?: number;           // Default: 3
+  retryDelay?: number;              // Default: 1000ms
+}
+```
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+## 🎣 Core Hooks
+
+### useAnalytics()
+
+Main hook for tracking events and managing users.
+
+```tsx
+const {
+  track,                    // Track custom events
+  page,                     // Track page views
+  identify,                 // Identify users
+  reset,                    // Reset analytics state
+  flush,                    // Force flush events
+  trackError,               // Track custom errors
+  trackPerformance,         // Track performance metrics
+  getSessionData,           // Get current session data
+  getQueueSize,             // Get current queue size
+  trackSubscriptionCancellation, // Track subscription cancellations
+} = useAnalytics();
+```
+
+### useSessionTracking()
+
+Monitor user session data in real-time.
+
+```tsx
+const {
+  sessionData,              // Full session object
+  sessionId,               // Current session ID
+  isActive,                // Is session active
+  duration,                // Session duration in ms
+  pageViews,               // Number of page views
+  clicks,                  // Number of clicks
+  scrollDepth,             // Current scroll depth %
+} = useSessionTracking();
+```
+
+### useErrorTracking()
+
+Automatic and manual error tracking.
+
+```tsx
+const {
+  trackJavaScriptError,     // Track JS errors
+  trackCustomError,         // Track custom errors
+} = useErrorTracking();
+```
+
+### usePerformanceTracking()
+
+Track performance metrics and Core Web Vitals.
+
+```tsx
+const {
+  measureCustomPerformance, // Create custom performance measurements
+} = usePerformanceTracking();
+```
+
+## 🧩 Components
+
+### TrackView - Element Visibility Tracking
+
+```tsx
+<TrackView 
+  event="hero_viewed" 
+  properties={{ section: 'homepage' }}
+  threshold={0.5}
+  delay={1000}
+>
+  <div>Tracked when 50% visible for 1 second</div>
+</TrackView>
+```
+
+### HeatmapTracker - User Interaction Tracking
+
+```tsx
+<HeatmapTracker 
+  trackClicks={true}
+  trackHovers={true}
+  element="product-grid"
+>
+  <div>All interactions tracked for heatmap</div>
+</HeatmapTracker>
+```
+
+### PerformanceMonitor - Component Performance
+
+```tsx
+<PerformanceMonitor 
+  measureRender={true}
+  componentName="ProductList"
+>
+  <ProductList products={products} />
+</PerformanceMonitor>
+```
+
+### AnalyticsErrorBoundary - Error Tracking
+
+```tsx
+<AnalyticsErrorBoundary fallback={<ErrorFallback />}>
+  <App />
+</AnalyticsErrorBoundary>
+```
+
+### TrackForm - Form Analytics
+
+```tsx
+<TrackForm 
+  formName="contact-form"
+  trackSubmit={true}
+  trackFieldChanges={true}
+>
+  <input name="email" type="email" />
+  <textarea name="message" />
+  <button type="submit">Submit</button>
+</TrackForm>
+```
+
+## 🔄 Event Queuing & Batching
+
+The SDK automatically queues events and sends them in batches:
+
+- **Batch Size**: Configure events per batch
+- **Flush Interval**: Automatic sending frequency
+- **Retry Logic**: Exponential backoff for failed requests
+- **Offline Support**: Queue events when offline
+
+```tsx
+const { flush, getQueueSize } = useAnalytics();
+
+console.log(`${getQueueSize()} events queued`);
+await flush(); // Send all events immediately
+```
+
+## 🚨 Error Handling
+
+### Automatic Error Tracking
+- JavaScript errors
+- Unhandled Promise rejections  
+- React component errors
+
+### Manual Error Tracking
+```tsx
+const { trackError } = useAnalytics();
+
+try {
+  // risky operation
+} catch (error) {
+  trackError(error, {
+    context: 'user-action',
+    user_id: userId
+  });
+}
+```
+
+## ⚡ Performance Monitoring
+
+### Core Web Vitals
+Automatically tracks when `enablePerformanceTracking: true`:
+- **LCP** (Largest Contentful Paint)
+- **FID** (First Input Delay)
+- **CLS** (Cumulative Layout Shift)
+- **FCP** (First Contentful Paint)
+
+### Custom Performance Metrics
+```tsx
+const { measureCustomPerformance } = usePerformanceTracking();
+
+const measurement = measureCustomPerformance('api-call');
+measurement.start();
+await fetchData();
+measurement.end(); // Automatically tracked
+```
+
+## 📱 Session Management
+
+Rich session tracking includes:
+- Session duration and activity
+- Page views and navigation
+- User interactions (clicks, scrolls)
+- Scroll depth and engagement
+- Activity/inactivity periods
+
+## 🚀 Next.js Integration
+
+### App Router (app/)
+```tsx
+// app/layout.tsx
+import { AnalyticsProvider } from 'mentiq-sdk';
+
+export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html>
       <body>
-        <AnalyticsProvider
-          config={{
-            apiKey: process.env.NEXT_PUBLIC_ANALYTICS_API_KEY!,
-            enableAutoPageTracking: true,
-          }}
-        >
+        <AnalyticsProvider config={{ apiKey: 'your-key' }}>
           {children}
         </AnalyticsProvider>
       </body>
@@ -120,246 +314,118 @@ export default function RootLayout({
 }
 ```
 
-#### Pages Router
-
+### Pages Router (pages/)
 ```tsx
 // pages/_app.tsx
-import type { AppProps } from "next/app";
-import { AnalyticsProvider } from "mentiq-sdk";
+import { AnalyticsProvider } from 'mentiq-sdk';
 
-export default function App({ Component, pageProps }: AppProps) {
+export default function App({ Component, pageProps }) {
   return (
-    <AnalyticsProvider
-      config={{
-        apiKey: process.env.NEXT_PUBLIC_ANALYTICS_API_KEY!,
-        enableAutoPageTracking: true,
-      }}
-    >
+    <AnalyticsProvider config={{ apiKey: 'your-key' }}>
       <Component {...pageProps} />
     </AnalyticsProvider>
   );
 }
 ```
 
-## Advanced Usage
+## 📊 Example Use Cases
 
-### Custom Hooks
-
+### E-commerce Tracking
 ```tsx
-import {
-  usePageTracking,
-  useComponentTracking,
-  useInteractionTracking,
-  useABTest,
-} from "mentiq-sdk";
-
-function MyComponent() {
-  // Automatic page tracking
-  usePageTracking({ category: "product" });
-
-  // Component lifecycle tracking
-  useComponentTracking("ProductCard");
-
-  // Interaction tracking
-  const { trackClick, trackHover } = useInteractionTracking();
-
-  // A/B testing
-  const { variant, trackConversion } = useABTest("checkout_button", [
-    "blue",
-    "green",
-    "red",
-  ]);
+function ProductPage({ product }) {
+  const { track } = useAnalytics();
 
   return (
-    <div>
-      <button
-        className={`btn-${variant}`}
-        onClick={() => trackConversion({ revenue: 99.99 })}
+    <TrackView 
+      event="product_viewed"
+      properties={{ 
+        product_id: product.id,
+        category: product.category,
+        price: product.price
+      }}
+    >
+      <ProductDetails product={product} />
+      
+      <TrackClick
+        event="add_to_cart"
+        properties={{ product_id: product.id }}
       >
-        Buy Now
-      </button>
-    </div>
+        <button>Add to Cart</button>
+      </TrackClick>
+    </TrackView>
   );
 }
 ```
 
-### Tracking Components
+### Content Engagement
+```tsx
+function BlogPost({ post }) {
+  return (
+    <TrackScroll milestones={[25, 50, 75, 100]}>
+      <TrackTime intervals={[30, 60, 180]}>
+        <article>
+          <h1>{post.title}</h1>
+          <div>{post.content}</div>
+        </article>
+      </TrackTime>
+    </TrackScroll>
+  );
+}
+```
+
+## 📚 TypeScript Support
+
+Full TypeScript support with comprehensive types:
 
 ```tsx
-import {
-  TrackView,
-  TrackClick,
-  TrackForm,
-  TrackScroll,
-  TrackTime,
-} from "mentiq-sdk";
+import type { 
+  AnalyticsConfig,
+  EventProperties,
+  SessionData,
+  PerformanceData 
+} from 'mentiq-sdk';
 
-function MyPage() {
-  return (
-    <TrackTime intervals={[30, 60, 120]}>
-      <TrackScroll milestones={[25, 50, 75, 100]}>
-        <TrackView
-          event="hero_viewed"
-          properties={{ section: "hero" }}
-          threshold={0.7}
-        >
-          <div>Hero Section</div>
-        </TrackView>
-
-        <TrackClick event="cta_clicked" properties={{ location: "sidebar" }}>
-          <button>Click me</button>
-        </TrackClick>
-
-        <TrackForm
-          formName="newsletter_signup"
-          trackSubmit={true}
-          trackFieldChanges={true}
-        >
-          <input name="email" type="email" />
-          <button type="submit">Subscribe</button>
-        </TrackForm>
-      </TrackScroll>
-    </TrackTime>
-  );
-}
+const config: AnalyticsConfig = {
+  apiKey: 'key',
+  enableHeatmapTracking: true
+};
 ```
 
-### Server-side Tracking (Next.js API Routes)
+## 📋 API Reference
 
-```typescript
-// pages/api/track.ts or app/api/track/route.ts
-import { trackServerEvent } from "mentiq-sdk";
+### Analytics Class Methods
+```tsx
+// Core tracking
+analytics.track(event: string, properties?: EventProperties)
+analytics.page(properties?: PageProperties)
+analytics.identify(userId: string, traits?: UserProperties)
 
-export default async function handler(req: any, res: any) {
-  await trackServerEvent(
-    {
-      apiKey: process.env.ANALYTICS_API_KEY!,
-    },
-    "api_endpoint_called",
-    {
-      endpoint: req.url,
-      method: req.method,
-    },
-    {
-      userAgent: req.headers["user-agent"],
-      ip: req.ip,
-    }
-  );
+// Queue management
+analytics.flush(): Promise<void>
+analytics.getQueueSize(): number
+analytics.clearQueue(): void
 
-  res.status(200).json({ success: true });
-}
+// Advanced tracking
+analytics.trackCustomError(error: string | Error, properties?: EventProperties)
+analytics.trackPerformance(data: PerformanceData)
 ```
 
-## Configuration
+## 🚀 Publishing
 
-```typescript
-interface AnalyticsConfig {
-  apiKey: string; // Your API key (required)
-  endpoint?: string; // Custom endpoint URL
-  debug?: boolean; // Enable debug logging
-  userId?: string; // Initial user ID
-  sessionTimeout?: number; // Session timeout in ms (default: 30min)
-  batchSize?: number; // Events per batch (default: 20)
-  flushInterval?: number; // Auto-flush interval in ms (default: 10s)
-  enableAutoPageTracking?: boolean; // Auto-track page views (default: true)
-  enablePerformanceTracking?: boolean; // Track page performance (default: false)
-}
+To publish the SDK:
+
+```bash
+npm run build
+npm run test
+npm publish
 ```
 
-## Event Types
+## 📄 License
 
-### Track Events
+MIT License - Free for personal and commercial use.
 
-Custom events with properties:
+## 🆘 Support
 
-```typescript
-track("purchase_completed", {
-  product_id: "prod_123",
-  revenue: 29.99,
-  currency: "USD",
-  category: "electronics",
-});
-```
-
-### Page Views
-
-Automatic or manual page tracking:
-
-```typescript
-page({
-  title: "Product Detail",
-  category: "ecommerce",
-  product_id: "prod_123",
-});
-```
-
-### User Identification
-
-Link events to specific users:
-
-```typescript
-identify("user_123", {
-  email: "user@example.com",
-  name: "John Doe",
-  plan: "premium",
-  signup_date: "2024-01-15",
-});
-```
-
-### User Aliasing
-
-Connect anonymous and identified users:
-
-```typescript
-alias("user_123", "anonymous_456");
-```
-
-## Privacy & GDPR
-
-The SDK is designed with privacy in mind:
-
-- **Local storage only** - User data stored locally, not transmitted unless explicitly tracked
-- **Anonymous by default** - Generates anonymous IDs, no PII collected automatically
-- **Opt-in tracking** - All tracking is explicit via API calls
-- **Data control** - Users can reset/clear all data with `reset()`
-- **Configurable** - Disable auto-tracking features as needed
-
-## API Reference
-
-### Core Methods
-
-- `init(config)` - Initialize the SDK
-- `track(event, properties?)` - Track custom events
-- `page(properties?)` - Track page views
-- `identify(userId, traits?)` - Identify users
-- `alias(newId, previousId?)` - Alias users
-- `reset()` - Reset all user data
-- `flush()` - Force send queued events
-
-### React Hooks
-
-- `useAnalytics()` - Get analytics instance
-- `useTrack()` - Get track function
-- `usePage()` - Get page function
-- `useIdentify()` - Get identify function
-- `usePageTracking()` - Auto-track page views
-- `useComponentTracking()` - Track component lifecycle
-- `useInteractionTracking()` - Track user interactions
-- `useABTest()` - A/B testing utilities
-
-### Components
-
-- `<AnalyticsProvider>` - Context provider
-- `<TrackView>` - Track element visibility
-- `<TrackClick>` - Track click events
-- `<TrackForm>` - Track form interactions
-- `<TrackScroll>` - Track scroll milestones
-- `<TrackTime>` - Track time spent
-
-## License
-
-MIT
-
-## Support
-
-For questions, issues, or feature requests, please open an issue on GitHub.
+- 📝 [Documentation](https://docs.mentiq.io)
+- 🐛 [Issues](https://github.com/your-org/mentiq-sdk/issues)
+- 💬 [Discussions](https://github.com/your-org/mentiq-sdk/discussions)

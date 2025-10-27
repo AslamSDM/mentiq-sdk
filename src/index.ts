@@ -8,6 +8,11 @@ export { AnalyticsProvider } from "./provider";
 export * from "./hooks";
 export * from "./components";
 
+// A/B Testing
+export { ABTestingService } from "./ab-testing";
+export * from "./hooks-ab-testing";
+export * from "./components-ab-testing";
+
 // Next.js
 export * from "./nextjs";
 

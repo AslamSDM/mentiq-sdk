@@ -1,5 +1,10 @@
 import React, { useEffect, useRef, ReactNode } from "react";
-import { useAnalytics, useInteractionTracking, useErrorTracking, usePerformanceTracking } from "./hooks";
+import {
+  useAnalytics,
+  useInteractionTracking,
+  useErrorTracking,
+  usePerformanceTracking,
+} from "./hooks";
 import { EventProperties } from "./types";
 
 interface TrackViewProps {
@@ -301,7 +306,7 @@ export function PerformanceMonitor({
     if (measureRender) {
       const measurement = measureCustomPerformance(`${componentName}-render`);
       renderStartRef.current = performance.now();
-      
+
       if (measurement) {
         measurement.start();
 
@@ -432,7 +437,13 @@ export function SessionMonitor({
       }, inactivityThreshold);
     };
 
-    const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+    ];
     events.forEach((event) => {
       window.addEventListener(event, updateActivity, { passive: true });
     });

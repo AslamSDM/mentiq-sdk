@@ -11,6 +11,7 @@ import {
   SessionData,
   PerformanceData,
   ErrorData,
+  BackendEvent,
 } from "./types";
 import {
   createEvent,
@@ -50,7 +51,7 @@ export class Analytics implements AnalyticsInstance {
   constructor(config: AnalyticsConfig) {
     this.config = {
       ...config,
-      endpoint: config.endpoint || "https://api.mentiq.io/events",
+      endpoint: config.endpoint || "https://api.mentiq.io",
       debug: config.debug || false,
       sessionTimeout: config.sessionTimeout || 30 * 60 * 1000, // 30 minutes
       batchSize: config.batchSize || 20,
@@ -138,36 +139,49 @@ export class Analytics implements AnalyticsInstance {
     const updateSession = () => {
       this.sessionData.isActive = true;
       this.sessionData.endTime = Date.now();
-      this.sessionData.duration = this.sessionData.endTime - this.sessionData.startTime;
-      
+      this.sessionData.duration =
+        this.sessionData.endTime - this.sessionData.startTime;
+
       // Reset session timeout
       if (this.sessionTimer) {
         clearTimeout(this.sessionTimer);
       }
-      
+
       this.sessionTimer = setTimeout(() => {
         this.endSession();
       }, this.config.sessionTimeout);
     };
 
     // Track user activity
-    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
-    events.forEach(event => {
+    const events = [
+      "mousedown",
+      "mousemove",
+      "keypress",
+      "scroll",
+      "touchstart",
+    ];
+    events.forEach((event) => {
       window.addEventListener(event, updateSession, { passive: true });
     });
 
     // Track scroll depth
     const trackScrollDepth = debounce(() => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
-      const scrollDepth = Math.round((scrollTop + windowHeight) / documentHeight * 100);
-      
+      const scrollDepth = Math.round(
+        ((scrollTop + windowHeight) / documentHeight) * 100
+      );
+
       this.sessionData.scrollDepth = scrollDepth;
-      this.sessionData.maxScrollDepth = Math.max(this.sessionData.maxScrollDepth, scrollDepth);
+      this.sessionData.maxScrollDepth = Math.max(
+        this.sessionData.maxScrollDepth,
+        scrollDepth
+      );
     }, 1000);
 
-    window.addEventListener('scroll', trackScrollDepth, { passive: true });
+    window.addEventListener("scroll", trackScrollDepth, { passive: true });
 
     // Initialize session timer
     updateSession();
@@ -182,14 +196,16 @@ export class Analytics implements AnalyticsInstance {
         y: event.clientY,
         element: (event.target as HTMLElement)?.tagName?.toLowerCase(),
         selector: this.getElementSelector(event.target as HTMLElement),
-        action: 'click',
+        action: "click",
         viewport: {
           width: window.innerWidth,
           height: window.innerHeight,
         },
       };
 
-      const analyticsEvent = createEvent("heatmap", "click", { heatmap: heatmapData });
+      const analyticsEvent = createEvent("heatmap", "click", {
+        heatmap: heatmapData,
+      });
       this.enqueueEvent(analyticsEvent);
       this.sessionData.clicks++;
     };
@@ -200,14 +216,16 @@ export class Analytics implements AnalyticsInstance {
         y: event.clientY,
         element: (event.target as HTMLElement)?.tagName?.toLowerCase(),
         selector: this.getElementSelector(event.target as HTMLElement),
-        action: 'move',
+        action: "move",
         viewport: {
           width: window.innerWidth,
           height: window.innerHeight,
         },
       };
 
-      const analyticsEvent = createEvent("heatmap", "mouse_move", { heatmap: heatmapData });
+      const analyticsEvent = createEvent("heatmap", "mouse_move", {
+        heatmap: heatmapData,
+      });
       this.enqueueEvent(analyticsEvent);
     }, 500);
 
@@ -215,26 +233,28 @@ export class Analytics implements AnalyticsInstance {
       const heatmapData: HeatmapData = {
         x: window.pageXOffset,
         y: window.pageYOffset,
-        action: 'scroll',
+        action: "scroll",
         viewport: {
           width: window.innerWidth,
           height: window.innerHeight,
         },
       };
 
-      const analyticsEvent = createEvent("heatmap", "scroll", { heatmap: heatmapData });
+      const analyticsEvent = createEvent("heatmap", "scroll", {
+        heatmap: heatmapData,
+      });
       this.enqueueEvent(analyticsEvent);
     }, 1000);
 
-    window.addEventListener('click', trackClick);
-    window.addEventListener('mousemove', trackMouseMove, { passive: true });
-    window.addEventListener('scroll', trackScroll, { passive: true });
+    window.addEventListener("click", trackClick);
+    window.addEventListener("mousemove", trackMouseMove, { passive: true });
+    window.addEventListener("scroll", trackScroll, { passive: true });
 
     // Store listeners for cleanup
     this.heatmapListeners.push(
-      () => window.removeEventListener('click', trackClick),
-      () => window.removeEventListener('mousemove', trackMouseMove),
-      () => window.removeEventListener('scroll', trackScroll)
+      () => window.removeEventListener("click", trackClick),
+      () => window.removeEventListener("mousemove", trackMouseMove),
+      () => window.removeEventListener("scroll", trackScroll)
     );
   }
 
@@ -248,10 +268,12 @@ export class Analytics implements AnalyticsInstance {
         filename: event.filename,
         lineno: event.lineno,
         colno: event.colno,
-        type: 'javascript',
+        type: "javascript",
       };
 
-      const analyticsEvent = createEvent("error", "javascript_error", { error: errorData });
+      const analyticsEvent = createEvent("error", "javascript_error", {
+        error: errorData,
+      });
       this.enqueueEvent(analyticsEvent);
     };
 
@@ -259,40 +281,51 @@ export class Analytics implements AnalyticsInstance {
       const errorData: ErrorData = {
         message: event.reason?.message || String(event.reason),
         stack: event.reason?.stack,
-        type: 'unhandledrejection',
+        type: "unhandledrejection",
       };
 
-      const analyticsEvent = createEvent("error", "unhandled_rejection", { error: errorData });
+      const analyticsEvent = createEvent("error", "unhandled_rejection", {
+        error: errorData,
+      });
       this.enqueueEvent(analyticsEvent);
     };
 
-    window.addEventListener('error', trackJavaScriptError);
-    window.addEventListener('unhandledrejection', trackUnhandledRejection);
+    window.addEventListener("error", trackJavaScriptError);
+    window.addEventListener("unhandledrejection", trackUnhandledRejection);
 
     // Store listeners for cleanup
     this.errorListeners.push(
-      () => window.removeEventListener('error', trackJavaScriptError),
-      () => window.removeEventListener('unhandledrejection', trackUnhandledRejection)
+      () => window.removeEventListener("error", trackJavaScriptError),
+      () =>
+        window.removeEventListener(
+          "unhandledrejection",
+          trackUnhandledRejection
+        )
     );
   }
 
   private getElementSelector(element: HTMLElement): string {
-    if (!element) return '';
-    
-    const id = element.id ? `#${element.id}` : '';
-    const className = element.className ? `.${element.className.split(' ').join('.')}` : '';
+    if (!element) return "";
+
+    const id = element.id ? `#${element.id}` : "";
+    const className = element.className
+      ? `.${element.className.split(" ").join(".")}`
+      : "";
     const tagName = element.tagName.toLowerCase();
-    
+
     return `${tagName}${id}${className}`;
   }
 
   private endSession(): void {
     this.sessionData.isActive = false;
     this.sessionData.endTime = Date.now();
-    this.sessionData.duration = this.sessionData.endTime - this.sessionData.startTime;
+    this.sessionData.duration =
+      this.sessionData.endTime - this.sessionData.startTime;
 
     // Send session data
-    const analyticsEvent = createEvent("session", "session_end", { session: this.sessionData });
+    const analyticsEvent = createEvent("session", "session_end", {
+      session: this.sessionData,
+    });
     this.enqueueEvent(analyticsEvent);
 
     // Start new session
@@ -439,23 +472,26 @@ export class Analytics implements AnalyticsInstance {
     return { ...this.sessionData };
   }
 
-  public trackCustomError(error: string | Error, properties?: EventProperties): void {
+  public trackCustomError(
+    error: string | Error,
+    properties?: EventProperties
+  ): void {
     const errorData: ErrorData = {
-      message: typeof error === 'string' ? error : error.message,
-      stack: typeof error === 'object' ? error.stack : undefined,
-      type: 'custom',
+      message: typeof error === "string" ? error : error.message,
+      stack: typeof error === "object" ? error.stack : undefined,
+      type: "custom",
     };
 
-    const analyticsEvent = createEvent("error", "custom_error", { 
+    const analyticsEvent = createEvent("error", "custom_error", {
       error: errorData,
-      ...properties 
+      ...properties,
     });
     this.enqueueEvent(analyticsEvent);
   }
 
   public trackPerformance(performanceData: PerformanceData): void {
-    const analyticsEvent = createEvent("track", "performance", { 
-      performance: performanceData 
+    const analyticsEvent = createEvent("track", "performance", {
+      performance: performanceData,
     });
     this.enqueueEvent(analyticsEvent);
   }
@@ -472,7 +508,10 @@ export class Analytics implements AnalyticsInstance {
     // Check queue size limit
     if (this.eventQueue.length >= this.config.maxQueueSize) {
       // Remove oldest events
-      this.eventQueue.splice(0, this.eventQueue.length - this.config.maxQueueSize + 1);
+      this.eventQueue.splice(
+        0,
+        this.eventQueue.length - this.config.maxQueueSize + 1
+      );
     }
 
     const queuedEvent: QueuedEvent = {
@@ -507,18 +546,42 @@ export class Analytics implements AnalyticsInstance {
   ): Promise<void> {
     const failedEvents: QueuedEvent[] = [];
 
-    for (const queuedEvent of batch) {
-      try {
-        await provider.track(queuedEvent.event);
-      } catch (error) {
+    // For our backend, we'll send the batch as a single request instead of individual events
+    try {
+      const backendEvents = batch.map((queuedEvent) =>
+        this.transformEventForBackend(queuedEvent.event)
+      );
+
+      const response = await fetch(
+        `${this.config.endpoint}/api/v1/events/batch`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `ApiKey ${this.config.apiKey}`,
+            "X-Project-ID": this.config.projectId,
+          },
+          body: JSON.stringify(backendEvents),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // If batch succeeds, all events are processed
+      return;
+    } catch (error) {
+      // If batch fails, mark all events for retry
+      for (const queuedEvent of batch) {
         queuedEvent.retries++;
         if (queuedEvent.retries < this.config.retryAttempts) {
           failedEvents.push(queuedEvent);
         }
-        
-        if (this.config.debug) {
-          console.error("MentiQ Analytics event failed:", error, queuedEvent);
-        }
+      }
+
+      if (this.config.debug) {
+        console.error("MentiQ Analytics batch send error:", error);
       }
     }
 
@@ -530,15 +593,90 @@ export class Analytics implements AnalyticsInstance {
     }
   }
 
+  private transformEventForBackend(event: AnalyticsEvent): BackendEvent {
+    // Map internal event types to backend event types
+    const eventTypeMap: Record<string, string> = {
+      track: event.event || "custom_event",
+      page: "page_view",
+      identify: "user_identify",
+      alias: "user_alias",
+      heatmap: "heatmap_click",
+      session: "session_update",
+      error: "error_event",
+    };
+
+    // For track events, use common event names
+    let eventType = eventTypeMap[event.type] || "custom_event";
+
+    // Map common track event names to backend expected names
+    if (event.type === "track" && event.event) {
+      const trackEventMap: Record<string, string> = {
+        element_clicked: "click",
+        element_viewed: "view",
+        element_hovered: "hover",
+        button_clicked: "click",
+        link_clicked: "click",
+        form_submitted: "form_submit",
+        video_played: "video_play",
+        video_paused: "video_pause",
+        download: "file_download",
+        signup: "user_signup",
+        login: "user_login",
+        logout: "user_logout",
+        purchase: "purchase",
+        add_to_cart: "cart_add",
+        remove_from_cart: "cart_remove",
+      };
+
+      eventType = trackEventMap[event.event] || event.event;
+    }
+
+    const backendEvent: BackendEvent = {
+      event_id: event.id,
+      event_type: eventType,
+      user_id: event.userId,
+      session_id: event.sessionId,
+      timestamp: new Date(event.timestamp).toISOString(),
+      properties: {
+        ...event.properties,
+        // Include context data in properties for the backend (serialized)
+        ...(event.context.page && { page: JSON.stringify(event.context.page) }),
+        ...(event.context.screen && {
+          screen: JSON.stringify(event.context.screen),
+        }),
+        ...(event.context.performance && {
+          performance: JSON.stringify(event.context.performance),
+        }),
+        ...(event.context.heatmap && {
+          heatmap: JSON.stringify(event.context.heatmap),
+        }),
+        ...(event.context.session && {
+          session: JSON.stringify(event.context.session),
+        }),
+        ...(event.context.error && {
+          error: JSON.stringify(event.context.error),
+        }),
+        library: JSON.stringify(event.context.library),
+        timezone: event.context.timezone,
+        locale: event.context.locale,
+      },
+      user_agent: event.context.userAgent,
+    };
+
+    return backendEvent;
+  }
+
   private async sendEvent(event: AnalyticsEvent): Promise<void> {
     try {
-      const response = await fetch(this.config.endpoint, {
+      const backendEvent = this.transformEventForBackend(event);
+      const response = await fetch(`${this.config.endpoint}/api/v1/events`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.config.apiKey}`,
+          Authorization: `ApiKey ${this.config.apiKey}`,
+          "X-Project-ID": this.config.projectId,
         },
-        body: JSON.stringify(event),
+        body: JSON.stringify(backendEvent),
       });
 
       if (!response.ok) {
@@ -562,11 +700,11 @@ export class Analytics implements AnalyticsInstance {
     }
 
     // Clean up heatmap listeners
-    this.heatmapListeners.forEach(cleanup => cleanup());
+    this.heatmapListeners.forEach((cleanup) => cleanup());
     this.heatmapListeners = [];
 
     // Clean up error listeners
-    this.errorListeners.forEach(cleanup => cleanup());
+    this.errorListeners.forEach((cleanup) => cleanup());
     this.errorListeners = [];
 
     // End current session

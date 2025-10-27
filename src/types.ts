@@ -1,5 +1,6 @@
 export interface AnalyticsConfig {
   apiKey: string;
+  projectId: string;
   endpoint?: string;
   debug?: boolean;
   userId?: string;
@@ -20,6 +21,18 @@ export interface EventProperties {
   [key: string]: string | number | boolean | null | undefined;
 }
 
+// Backend-compatible event structure
+export interface BackendEvent {
+  event_id?: string;
+  event_type: string;
+  user_id?: string;
+  session_id?: string;
+  timestamp?: string; // ISO string format
+  properties?: EventProperties;
+  user_agent?: string; // Auto-extracted by backend
+  ip_address?: string; // Auto-extracted by backend
+}
+
 export interface PageProperties {
   title?: string;
   url?: string;
@@ -35,7 +48,14 @@ export interface UserProperties {
 export interface AnalyticsEvent {
   id: string;
   timestamp: number;
-  type: "track" | "page" | "identify" | "alias" | "heatmap" | "session" | "error";
+  type:
+    | "track"
+    | "page"
+    | "identify"
+    | "alias"
+    | "heatmap"
+    | "session"
+    | "error";
   event?: string;
   properties?: EventProperties;
   userId?: string;
@@ -73,7 +93,10 @@ export interface AnalyticsInstance {
   getAnonymousId: () => string;
   getSessionId: () => string;
   getSessionData: () => SessionData;
-  trackCustomError: (error: string | Error, properties?: EventProperties) => void;
+  trackCustomError: (
+    error: string | Error,
+    properties?: EventProperties
+  ) => void;
   trackPerformance: (performanceData: PerformanceData) => void;
   getQueueSize: () => number;
   clearQueue: () => void;
@@ -89,7 +112,7 @@ export interface HeatmapData {
   y: number;
   element?: string;
   selector?: string;
-  action: 'click' | 'move' | 'scroll';
+  action: "click" | "move" | "scroll";
   viewport: {
     width: number;
     height: number;
@@ -125,11 +148,104 @@ export interface ErrorData {
   filename?: string;
   lineno?: number;
   colno?: number;
-  type: 'javascript' | 'unhandledrejection' | 'network' | 'custom';
+  type: "javascript" | "unhandledrejection" | "network" | "custom";
 }
 
 export interface QueuedEvent {
   event: AnalyticsEvent;
   retries: number;
   timestamp: number;
+}
+
+// A/B Testing Types
+export interface ABTestConfig {
+  enableABTesting?: boolean;
+  assignmentCacheTTL?: number; // Cache assignment for this many ms (default: 5 minutes)
+  autoTrackExposures?: boolean; // Automatically track when user is exposed to variant
+}
+
+export interface Experiment {
+  id: string;
+  name: string;
+  description?: string;
+  key: string;
+  status: 'DRAFT' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
+  trafficSplit: number;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  variants: Variant[];
+}
+
+export interface Variant {
+  id: string;
+  name: string;
+  key: string;
+  description?: string;
+  isControl: boolean;
+  trafficSplit: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExperimentAssignment {
+  experimentId: string;
+  variantId: string;
+  variantKey: string;
+  variantName: string;
+  isControl: boolean;
+  assignedAt: string;
+  experiment?: Experiment;
+}
+
+export interface ConversionEvent {
+  experimentId: string;
+  eventName: string;
+  eventValue?: number;
+  properties?: EventProperties;
+}
+
+export interface ABTestAnalytics {
+  getExperiment: (experimentKey: string) => Promise<Experiment | null>;
+  getAssignment: (experimentKey: string, options?: AssignmentOptions) => Promise<ExperimentAssignment | null>;
+  trackConversion: (conversion: ConversionEvent) => Promise<void>;
+  getAllExperiments: () => Promise<Experiment[]>;
+  isVariantEnabled: (experimentKey: string, variantKey: string) => Promise<boolean>;
+  getActiveVariants: () => Promise<Record<string, ExperimentAssignment>>;
+}
+
+export interface AssignmentOptions {
+  userId?: string;
+  anonymousId?: string;
+  forceRefresh?: boolean; // Ignore cache and fetch fresh assignment
+}
+
+export interface ABTestContext {
+  assignments: Record<string, ExperimentAssignment>; // experimentKey -> assignment
+  experiments: Record<string, Experiment>; // experimentKey -> experiment
+  lastFetch: number; // timestamp of last fetch
+}
+
+// Extend AnalyticsConfig to include AB testing
+export interface AnalyticsConfig {
+  apiKey: string;
+  projectId: string;
+  endpoint?: string;
+  debug?: boolean;
+  userId?: string;
+  sessionTimeout?: number;
+  batchSize?: number;
+  flushInterval?: number;
+  enableAutoPageTracking?: boolean;
+  enablePerformanceTracking?: boolean;
+  enableHeatmapTracking?: boolean;
+  enableSessionRecording?: boolean;
+  enableErrorTracking?: boolean;
+  maxQueueSize?: number;
+  retryAttempts?: number;
+  retryDelay?: number;
+  // A/B Testing
+  enableABTesting?: boolean;
+  abTestConfig?: ABTestConfig;
 }

@@ -1,6 +1,11 @@
 import { useContext, useEffect, useRef, useCallback } from "react";
 import { AnalyticsContext } from "./provider";
-import { EventProperties, UserProperties, PerformanceData, SessionData } from "./types";
+import {
+  EventProperties,
+  UserProperties,
+  PerformanceData,
+  SessionData,
+} from "./types";
 
 export function useAnalytics() {
   const analytics = useContext(AnalyticsContext);
@@ -60,6 +65,13 @@ export function useAnalytics() {
     return analytics.getQueueSize();
   }, [analytics]);
 
+  const trackSubscriptionCancellation = useCallback(
+    (properties?: EventProperties) => {
+      analytics.track("subscription_cancelled", properties);
+    },
+    [analytics]
+  );
+
   return {
     track,
     page,
@@ -70,6 +82,7 @@ export function useAnalytics() {
     trackPerformance,
     getSessionData,
     getQueueSize,
+    trackSubscriptionCancellation,
     analytics,
   };
 }
@@ -202,17 +215,20 @@ export function useErrorTracking() {
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       trackCustomError(`Unhandled Promise Rejection: ${event.reason}`, {
-        type: 'unhandledrejection',
+        type: "unhandledrejection",
       });
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('error', handleError);
-      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    if (typeof window !== "undefined") {
+      window.addEventListener("error", handleError);
+      window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
       return () => {
-        window.removeEventListener('error', handleError);
-        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+        window.removeEventListener("error", handleError);
+        window.removeEventListener(
+          "unhandledrejection",
+          handleUnhandledRejection
+        );
       };
     }
   }, [trackJavaScriptError, trackCustomError]);
@@ -227,22 +243,26 @@ export function usePerformanceTracking() {
   const { trackPerformance } = useAnalytics();
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !('performance' in window)) return;
+    if (typeof window === "undefined" || !("performance" in window)) return;
 
     const measurePerformance = () => {
-      const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-      const paint = performance.getEntriesByType('paint');
+      const navigation = performance.getEntriesByType(
+        "navigation"
+      )[0] as PerformanceNavigationTiming;
+      const paint = performance.getEntriesByType("paint");
 
       if (navigation) {
         const performanceData: PerformanceData = {
           loadTime: navigation.loadEventEnd - navigation.fetchStart,
           domReady: navigation.domContentLoadedEventEnd - navigation.fetchStart,
-          firstPaint: paint.find(p => p.name === 'first-paint')?.startTime,
-          firstContentfulPaint: paint.find(p => p.name === 'first-contentful-paint')?.startTime,
+          firstPaint: paint.find((p) => p.name === "first-paint")?.startTime,
+          firstContentfulPaint: paint.find(
+            (p) => p.name === "first-contentful-paint"
+          )?.startTime,
         };
 
         // Get Core Web Vitals if available
-        if ('PerformanceObserver' in window) {
+        if ("PerformanceObserver" in window) {
           try {
             // Largest Contentful Paint
             new PerformanceObserver((list) => {
@@ -252,18 +272,19 @@ export function usePerformanceTracking() {
                 performanceData.largestContentfulPaint = lcpEntry.startTime;
                 trackPerformance({ ...performanceData });
               }
-            }).observe({ entryTypes: ['largest-contentful-paint'] });
+            }).observe({ entryTypes: ["largest-contentful-paint"] });
 
             // First Input Delay
             new PerformanceObserver((list) => {
               const entries = list.getEntries();
               entries.forEach((entry: any) => {
                 if (entry.processingStart && entry.startTime) {
-                  performanceData.firstInputDelay = entry.processingStart - entry.startTime;
+                  performanceData.firstInputDelay =
+                    entry.processingStart - entry.startTime;
                   trackPerformance({ ...performanceData });
                 }
               });
-            }).observe({ entryTypes: ['first-input'] });
+            }).observe({ entryTypes: ["first-input"] });
 
             // Cumulative Layout Shift
             new PerformanceObserver((list) => {
@@ -275,7 +296,7 @@ export function usePerformanceTracking() {
               });
               performanceData.cumulativeLayoutShift = clsValue;
               trackPerformance({ ...performanceData });
-            }).observe({ entryTypes: ['layout-shift'] });
+            }).observe({ entryTypes: ["layout-shift"] });
           } catch (e) {
             // Fallback if PerformanceObserver is not supported
             trackPerformance(performanceData);
@@ -287,34 +308,37 @@ export function usePerformanceTracking() {
     };
 
     // Measure performance after page load
-    if (document.readyState === 'complete') {
+    if (document.readyState === "complete") {
       measurePerformance();
     } else {
-      window.addEventListener('load', measurePerformance);
-      return () => window.removeEventListener('load', measurePerformance);
+      window.addEventListener("load", measurePerformance);
+      return () => window.removeEventListener("load", measurePerformance);
     }
   }, [trackPerformance]);
 
-  const measureCustomPerformance = useCallback((label: string) => {
-    if (typeof window === 'undefined' || !('performance' in window)) return;
+  const measureCustomPerformance = useCallback(
+    (label: string) => {
+      if (typeof window === "undefined" || !("performance" in window)) return;
 
-    return {
-      start: () => performance.mark(`${label}-start`),
-      end: () => {
-        performance.mark(`${label}-end`);
-        performance.measure(label, `${label}-start`, `${label}-end`);
-        const measure = performance.getEntriesByName(label)[0];
-        if (measure) {
-          trackPerformance({
-            [label]: measure.duration,
-          });
-        }
-        performance.clearMarks(`${label}-start`);
-        performance.clearMarks(`${label}-end`);
-        performance.clearMeasures(label);
-      },
-    };
-  }, [trackPerformance]);
+      return {
+        start: () => performance.mark(`${label}-start`),
+        end: () => {
+          performance.mark(`${label}-end`);
+          performance.measure(label, `${label}-start`, `${label}-end`);
+          const measure = performance.getEntriesByName(label)[0];
+          if (measure) {
+            trackPerformance({
+              [label]: measure.duration,
+            });
+          }
+          performance.clearMarks(`${label}-start`);
+          performance.clearMarks(`${label}-end`);
+          performance.clearMeasures(label);
+        },
+      };
+    },
+    [trackPerformance]
+  );
 
   return {
     measureCustomPerformance,
