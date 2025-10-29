@@ -1,10 +1,15 @@
-import React, { ReactNode, useEffect, useState } from 'react';
-import { 
-  ExperimentAssignment, 
+import React, { ReactNode, useEffect, useState } from "react";
+import {
+  ExperimentAssignment,
   ConversionEvent,
-  AssignmentOptions 
-} from './types';
-import { useExperiment, useVariant, useVariantValue, useConversionTracking } from './hooks-ab-testing';
+  AssignmentOptions,
+} from "./types";
+import {
+  useExperiment,
+  useVariant,
+  useVariantValue,
+  useConversionTracking,
+} from "./hooks-ab-testing";
 
 // Main A/B Test component that renders different content based on variant
 interface ABTestProps {
@@ -15,7 +20,13 @@ interface ABTestProps {
   options?: AssignmentOptions;
 }
 
-export function ABTest({ experimentKey, children, fallback, loadingComponent, options }: ABTestProps) {
+export function ABTest({
+  experimentKey,
+  children,
+  fallback,
+  loadingComponent,
+  options,
+}: ABTestProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
   if (loading) {
@@ -38,7 +49,13 @@ interface VariantProps {
   options?: AssignmentOptions;
 }
 
-export function Variant({ experimentKey, variantKey, children, fallback, options }: VariantProps) {
+export function Variant({
+  experimentKey,
+  variantKey,
+  children,
+  fallback,
+  options,
+}: VariantProps) {
   const { isEnabled, loading, error } = useVariant(experimentKey, variantKey);
 
   if (loading) {
@@ -60,7 +77,12 @@ interface ControlProps {
   options?: AssignmentOptions;
 }
 
-export function Control({ experimentKey, children, fallback, options }: ControlProps) {
+export function Control({
+  experimentKey,
+  children,
+  fallback,
+  options,
+}: ControlProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
   if (loading) {
@@ -83,7 +105,13 @@ interface VariantsProps {
   options?: AssignmentOptions;
 }
 
-export function Variants({ experimentKey, variants, fallback, loadingComponent, options }: VariantsProps) {
+export function Variants({
+  experimentKey,
+  variants,
+  fallback,
+  loadingComponent,
+  options,
+}: VariantsProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
   if (loading) {
@@ -107,7 +135,13 @@ interface FeatureFlagProps {
   options?: AssignmentOptions;
 }
 
-export function FeatureFlag({ experimentKey, children, fallback, loadingComponent, options }: FeatureFlagProps) {
+export function FeatureFlag({
+  experimentKey,
+  children,
+  fallback,
+  loadingComponent,
+  options,
+}: FeatureFlagProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
   if (loading) {
@@ -127,22 +161,30 @@ interface ABTestValueProps<T> {
   experimentKey: string;
   controlValue: T;
   variantValues: Record<string, T>;
-  children: (value: T, variant: string | undefined, isControl: boolean) => ReactNode;
+  children: (
+    value: T,
+    variant: string | undefined,
+    isControl: boolean
+  ) => ReactNode;
   fallback?: ReactNode;
   loadingComponent?: ReactNode;
   options?: AssignmentOptions;
 }
 
-export function ABTestValue<T>({ 
-  experimentKey, 
-  controlValue, 
-  variantValues, 
-  children, 
-  fallback, 
+export function ABTestValue<T>({
+  experimentKey,
+  controlValue,
+  variantValues,
+  children,
+  fallback,
   loadingComponent,
-  options 
+  options,
 }: ABTestValueProps<T>) {
-  const { value, loading, error, variant, isControl } = useVariantValue(experimentKey, controlValue, variantValues);
+  const { value, loading, error, variant, isControl } = useVariantValue(
+    experimentKey,
+    controlValue,
+    variantValues
+  );
 
   if (loading) {
     return <>{loadingComponent || null}</>;
@@ -152,7 +194,7 @@ export function ABTestValue<T>({
     return <>{fallback || null}</>;
   }
 
-  return <>{children(value, variant, isControl)}</>;
+  return <>{children(value, variant, isControl ? isControl : false)}</>;
 }
 
 // Higher-order component for A/B testing
@@ -162,19 +204,28 @@ export function withABTest<P extends object>(
   options?: AssignmentOptions
 ) {
   return function ABTestWrapper(props: P) {
-    const { assignment, loading, error } = useExperiment(experimentKey, options);
+    const { assignment, loading, error } = useExperiment(
+      experimentKey,
+      options
+    );
 
     if (loading) {
       return null; // or loading component
     }
 
     if (error || !assignment) {
-      return <WrappedComponent {...props} abTestVariant={null} abTestAssignment={null} />;
+      return (
+        <WrappedComponent
+          {...props}
+          abTestVariant={null}
+          abTestAssignment={null}
+        />
+      );
     }
 
     return (
-      <WrappedComponent 
-        {...props} 
+      <WrappedComponent
+        {...props}
         abTestVariant={assignment.variantKey}
         abTestAssignment={assignment}
       />
@@ -192,13 +243,13 @@ interface ConversionTrackerProps {
   triggerOnMount?: boolean;
 }
 
-export function ConversionTracker({ 
-  experimentId, 
-  eventName, 
-  eventValue, 
-  properties, 
+export function ConversionTracker({
+  experimentId,
+  eventName,
+  eventValue,
+  properties,
   children,
-  triggerOnMount = false 
+  triggerOnMount = false,
 }: ConversionTrackerProps) {
   const { trackConversion } = useConversionTracking();
   const [tracked, setTracked] = useState(false);
@@ -223,7 +274,7 @@ export function ConversionTracker({
 
   if (children) {
     return (
-      <div onClick={track} style={{ cursor: 'pointer' }}>
+      <div onClick={track} style={{ cursor: "pointer" }}>
         {children}
       </div>
     );
@@ -241,12 +292,12 @@ interface ABTestConditionalProps {
   options?: AssignmentOptions;
 }
 
-export function ABTestConditional({ 
-  experimentKey, 
-  condition, 
-  children, 
-  fallback, 
-  options 
+export function ABTestConditional({
+  experimentKey,
+  condition,
+  children,
+  fallback,
+  options,
 }: ABTestConditionalProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
@@ -268,7 +319,11 @@ interface ABTestEffectProps {
   options?: AssignmentOptions;
 }
 
-export function ABTestEffect({ experimentKey, effects, options }: ABTestEffectProps) {
+export function ABTestEffect({
+  experimentKey,
+  effects,
+  options,
+}: ABTestEffectProps) {
   const { assignment } = useExperiment(experimentKey, options);
 
   useEffect(() => {
@@ -291,13 +346,13 @@ interface ABTestWithStatesProps {
   options?: AssignmentOptions;
 }
 
-export function ABTestWithStates({ 
-  experimentKey, 
-  children, 
-  loadingComponent, 
-  errorComponent, 
-  fallbackComponent, 
-  options 
+export function ABTestWithStates({
+  experimentKey,
+  children,
+  loadingComponent,
+  errorComponent,
+  fallbackComponent,
+  options,
 }: ABTestWithStatesProps) {
   const { assignment, loading, error } = useExperiment(experimentKey, options);
 
@@ -306,7 +361,7 @@ export function ABTestWithStates({
   }
 
   if (error) {
-    return <>{errorComponent ? errorComponent(error) : null}</>;
+    return <>{errorComponent ? errorComponent(error.message) : null}</>;
   }
 
   if (!assignment) {
@@ -319,19 +374,20 @@ export function ABTestWithStates({
 // Example usage components for common patterns
 
 // Button A/B test component
-interface ABTestButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ABTestButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   experimentKey: string;
   variants: Record<string, { text: string; style?: React.CSSProperties }>;
   onClick?: () => void;
   onConversion?: () => void;
 }
 
-export function ABTestButton({ 
-  experimentKey, 
-  variants, 
-  onClick, 
-  onConversion, 
-  ...props 
+export function ABTestButton({
+  experimentKey,
+  variants,
+  onClick,
+  onConversion,
+  ...props
 }: ABTestButtonProps) {
   const { assignment } = useExperiment(experimentKey);
   const { trackConversion } = useConversionTracking();
@@ -348,12 +404,12 @@ export function ABTestButton({
   const handleClick = () => {
     onClick?.();
     onConversion?.();
-    
+
     // Track conversion if experiment ID is available
     if (assignment.experiment?.id) {
       trackConversion({
         experimentId: assignment.experiment.id,
-        eventName: 'button_click',
+        eventName: "button_click",
         properties: {
           variant: assignment.variantKey,
           buttonText: variant.text,
@@ -363,11 +419,7 @@ export function ABTestButton({
   };
 
   return (
-    <button 
-      onClick={handleClick} 
-      style={variant.style}
-      {...props}
-    >
+    <button onClick={handleClick} style={variant.style} {...props}>
       {variant.text}
     </button>
   );
@@ -378,15 +430,27 @@ interface ABTestTextProps {
   experimentKey: string;
   variants: Record<string, string>;
   fallback?: string;
-  component?: React.ComponentType<{ children: string }>;
+  component?:
+    | React.ComponentType<{ children: string }>
+    | keyof JSX.IntrinsicElements;
   options?: AssignmentOptions;
 }
 
-export function ABTestText({ experimentKey, variants, fallback, component: Component = 'span', options }: ABTestTextProps) {
-  const { value, loading } = useVariantValue(experimentKey, fallback || '', variants);
+export function ABTestText({
+  experimentKey,
+  variants,
+  fallback,
+  component: Component = "span",
+  options,
+}: ABTestTextProps) {
+  const { value, loading } = useVariantValue(
+    experimentKey,
+    fallback || "",
+    variants
+  );
 
   if (loading) {
-    return <Component>{fallback || ''}</Component>;
+    return <Component>{fallback || ""}</Component>;
   }
 
   return <Component>{value}</Component>;

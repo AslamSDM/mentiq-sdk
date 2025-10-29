@@ -1,119 +1,132 @@
-import { useState, useEffect, useCallback, useContext } from 'react';
-import { 
-  Experiment, 
-  ExperimentAssignment, 
-  ConversionEvent, 
+import { useState, useEffect, useCallback, useContext } from "react";
+import {
+  ExperimentAssignment,
+  ConversionEvent,
   AssignmentOptions,
-  ABTestAnalytics 
-} from './types';
-import { ABTestingService } from './ab-testing';
-import { AnalyticsContext } from './provider';
+  EventProperties,
+  Experiment,
+} from "./types";
+import { AnalyticsContext } from "./provider";
+import { ABTesting } from "./ab-testing";
 
-// Main A/B testing hook
 export function useABTesting() {
   const analytics = useContext(AnalyticsContext);
-  const [abTestService, setAbTestService] = useState<ABTestingService | null>(null);
 
-  useEffect(() => {
-    if (analytics && analytics.config.enableABTesting) {
-      const service = new ABTestingService(analytics.config);
-      setAbTestService(service);
-    }
-  }, [analytics]);
+  if (!analytics) {
+    throw new Error("useABTesting must be used within an AnalyticsProvider");
+  }
+  if (!analytics.config.enableABTesting) {
+    return null;
+  }
 
-  return abTestService;
+  // This is a simplified way to get the ABTesting instance.
+  // In a real app, you might want to manage this instance more carefully.
+  return new ABTesting(analytics.config);
 }
 
-// Hook to get experiment assignment
 export function useExperiment(
-  experimentKey: string, 
-  options: AssignmentOptions = {}
+  experimentKey: string,
+  options?: AssignmentOptions
 ) {
-  const abTestService = useABTesting();
-  const [assignment, setAssignment] = useState<ExperimentAssignment | null>(null);
+  const abTesting = useABTesting();
+  const [assignment, setAssignment] = useState<ExperimentAssignment | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
-  const fetchAssignment = useCallback(async () => {
-    if (!abTestService) {
+  useEffect(() => {
+    if (!abTesting) {
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      const result = await abTestService.getAssignment(experimentKey, options);
-      setAssignment(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get assignment');
-    } finally {
-      setLoading(false);
-    }
-  }, [abTestService, experimentKey, options]);
+    abTesting
+      .getAssignment(experimentKey, options)
+      .then((ass) => {
+        setAssignment(ass);
+      })
+      .catch((err) => {
+        setError(err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [abTesting, experimentKey, options]);
 
-  useEffect(() => {
-    fetchAssignment();
-  }, [fetchAssignment]);
-
-  const refetch = useCallback(() => {
-    fetchAssignment();
-  }, [fetchAssignment]);
+  const trackConversion = useCallback(
+    (eventName: string, eventValue?: number, properties?: EventProperties) => {
+      if (abTesting && assignment) {
+        const conversion: ConversionEvent = {
+          experimentId: assignment.experimentId,
+          eventName,
+          eventValue,
+          properties,
+        };
+        abTesting.trackConversion(conversion);
+      }
+    },
+    [abTesting, assignment]
+  );
 
   return {
+    loading,
+    error,
     assignment,
-    loading,
-    error,
-    refetch,
-    variant: assignment?.variantKey,
-    isControl: assignment?.isControl,
-    isInExperiment: !!assignment,
+    variantKey: assignment?.variantKey,
+    trackConversion,
   };
 }
 
-// Hook to get multiple experiment assignments
-export function useExperiments(experimentKeys: string[]) {
-  const abTestService = useABTesting();
-  const [assignments, setAssignments] = useState<Record<string, ExperimentAssignment | null>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// // Hook to get multiple experiment assignments
+// export function useExperiments(experimentKeys: string[]) {
+//   const abTestService = useABTesting();
+//   const [assignments, setAssignments] = useState<
+//     Record<string, ExperimentAssignment | null>
+//   >({});
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
 
-  const fetchAssignments = useCallback(async () => {
-    if (!abTestService) {
-      setLoading(false);
-      return;
-    }
+//   const fetchAssignments = useCallback(async () => {
+//     if (!abTestService) {
+//       setLoading(false);
+//       return;
+//     }
 
-    try {
-      setLoading(true);
-      setError(null);
-      const results = await abTestService.getMultipleAssignments(experimentKeys);
-      setAssignments(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get assignments');
-    } finally {
-      setLoading(false);
-    }
-  }, [abTestService, experimentKeys]);
+//     try {
+//       setLoading(true);
+//       setError(null);
+//       const results = await abTestService.getExperiment(
+//         experimentKeys
+//       );
+//       setAssignments(results);
+//     } catch (err) {
+//       setError(
+//         err instanceof Error ? err.message : "Failed to get assignments"
+//       );
+//     } finally {
+//       setLoading(false);
+//     }
+//   }, [abTestService, experimentKeys]);
 
-  useEffect(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+//   useEffect(() => {
+//     fetchAssignments();
+//   }, [fetchAssignments]);
 
-  const refetch = useCallback(() => {
-    fetchAssignments();
-  }, [fetchAssignments]);
+//   const refetch = useCallback(() => {
+//     fetchAssignments();
+//   }, [fetchAssignments]);
 
-  return {
-    assignments,
-    loading,
-    error,
-    refetch,
-    getVariant: (key: string) => assignments[key]?.variantKey,
-    isControl: (key: string) => assignments[key]?.isControl,
-    isInExperiment: (key: string) => !!assignments[key],
-  };
-}
+//   return {
+//     assignments,
+//     loading,
+//     error,
+//     refetch,
+//     getVariant: (key: string) => assignments[key]?.variantKey,
+//     isControl: (key: string) => assignments[key]?.isControl,
+//     isInExperiment: (key: string) => !!assignments[key],
+//   };
+// }
 
 // Hook to check if a specific variant is enabled
 export function useVariant(experimentKey: string, variantKey: string) {
@@ -155,7 +168,10 @@ export function useVariantValue<T>(
 }
 
 // Hook for running variant-specific code
-export function useVariantRunner(experimentKey: string, functions: Record<string, () => void>) {
+export function useVariantRunner(
+  experimentKey: string,
+  functions: Record<string, () => void>
+) {
   const { assignment, loading } = useExperiment(experimentKey);
 
   useEffect(() => {
@@ -175,18 +191,21 @@ export function useVariantRunner(experimentKey: string, functions: Record<string
 export function useConversionTracking() {
   const abTestService = useABTesting();
 
-  const trackConversion = useCallback(async (conversion: ConversionEvent) => {
-    if (!abTestService) {
-      console.warn('A/B testing service not available');
-      return;
-    }
+  const trackConversion = useCallback(
+    async (conversion: ConversionEvent) => {
+      if (!abTestService) {
+        console.warn("A/B testing service not available");
+        return;
+      }
 
-    try {
-      await abTestService.trackConversion(conversion);
-    } catch (error) {
-      console.error('Failed to track conversion:', error);
-    }
-  }, [abTestService]);
+      try {
+        await abTestService.trackConversion(conversion);
+      } catch (error) {
+        console.error("Failed to track conversion:", error);
+      }
+    },
+    [abTestService]
+  );
 
   return {
     trackConversion,
@@ -196,7 +215,9 @@ export function useConversionTracking() {
 // Hook for getting all active experiments
 export function useActiveExperiments() {
   const abTestService = useABTesting();
-  const [activeVariants, setActiveVariants] = useState<Record<string, ExperimentAssignment>>({});
+  const [activeVariants, setActiveVariants] = useState<
+    Record<string, ExperimentAssignment>
+  >({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -212,7 +233,9 @@ export function useActiveExperiments() {
       const variants = await abTestService.getActiveVariants();
       setActiveVariants(variants);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get active variants');
+      setError(
+        err instanceof Error ? err.message : "Failed to get active variants"
+      );
     } finally {
       setLoading(false);
     }
@@ -254,7 +277,7 @@ export function useExperimentInfo(experimentKey: string) {
       const result = await abTestService.getExperiment(experimentKey);
       setExperiment(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to get experiment');
+      setError(err instanceof Error ? err.message : "Failed to get experiment");
     } finally {
       setLoading(false);
     }
@@ -273,7 +296,7 @@ export function useExperimentInfo(experimentKey: string) {
     loading,
     error,
     refetch,
-    isRunning: experiment?.status === 'RUNNING',
+    isRunning: experiment?.status === "RUNNING",
     variants: experiment?.variants || [],
   };
 }
@@ -285,9 +308,14 @@ export function useABTestWithFallback<T>(
   variantValues: Record<string, T>,
   fallbackValue?: T
 ) {
-  const { value, loading, error } = useVariantValue(experimentKey, controlValue, variantValues);
-  
-  const finalValue = error && fallbackValue !== undefined ? fallbackValue : value;
+  const { value, loading, error } = useVariantValue(
+    experimentKey,
+    controlValue,
+    variantValues
+  );
+
+  const finalValue =
+    error && fallbackValue !== undefined ? fallbackValue : value;
 
   return {
     value: finalValue,

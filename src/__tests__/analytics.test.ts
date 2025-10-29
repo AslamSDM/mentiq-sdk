@@ -22,24 +22,42 @@ describe("Analytics", () => {
       statusText: "OK",
     } as Response);
 
-    // Clear localStorage
+    // Mock localStorage with proper implementation
+    const localStorageMock: { [key: string]: string } = {};
     Object.defineProperty(window, "localStorage", {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: jest.fn((key: string) => localStorageMock[key] || null),
+        setItem: jest.fn((key: string, value: string) => {
+          localStorageMock[key] = value;
+        }),
+        removeItem: jest.fn((key: string) => {
+          delete localStorageMock[key];
+        }),
+        clear: jest.fn(() => {
+          Object.keys(localStorageMock).forEach((key) => {
+            delete localStorageMock[key];
+          });
+        }),
       },
       writable: true,
     });
 
-    // Clear sessionStorage
+    // Mock sessionStorage with proper implementation
+    const sessionStorageMock: { [key: string]: string } = {};
     Object.defineProperty(window, "sessionStorage", {
       value: {
-        getItem: jest.fn(),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        getItem: jest.fn((key: string) => sessionStorageMock[key] || null),
+        setItem: jest.fn((key: string, value: string) => {
+          sessionStorageMock[key] = value;
+        }),
+        removeItem: jest.fn((key: string) => {
+          delete sessionStorageMock[key];
+        }),
+        clear: jest.fn(() => {
+          Object.keys(sessionStorageMock).forEach((key) => {
+            delete sessionStorageMock[key];
+          });
+        }),
       },
       writable: true,
     });

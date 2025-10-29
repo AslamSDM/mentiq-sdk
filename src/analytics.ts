@@ -24,7 +24,7 @@ import {
 } from "./utils";
 
 export class Analytics implements AnalyticsInstance {
-  private config: AnalyticsConfig & {
+  public config: AnalyticsConfig & {
     endpoint: string;
     debug: boolean;
     sessionTimeout: number;

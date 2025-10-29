@@ -15,6 +15,9 @@ export interface AnalyticsConfig {
   maxQueueSize?: number;
   retryAttempts?: number;
   retryDelay?: number;
+  // A/B Testing
+  enableABTesting?: boolean;
+  abTestConfig?: ABTestConfig;
 }
 
 export interface EventProperties {
@@ -100,6 +103,25 @@ export interface AnalyticsInstance {
   trackPerformance: (performanceData: PerformanceData) => void;
   getQueueSize: () => number;
   clearQueue: () => void;
+  config: {
+    apiKey: string;
+    projectId: string;
+    endpoint?: string;
+    debug?: boolean;
+    userId?: string;
+    sessionTimeout?: number;
+    batchSize?: number;
+    flushInterval?: number;
+    enableAutoPageTracking?: boolean;
+    enablePerformanceTracking?: boolean;
+    enableHeatmapTracking?: boolean;
+    enableSessionRecording?: boolean;
+    enableErrorTracking?: boolean;
+    maxQueueSize?: number;
+    retryAttempts?: number;
+    retryDelay?: number;
+    enableABTesting?: boolean;
+  };
 }
 
 export interface AnalyticsProvider {
@@ -169,7 +191,7 @@ export interface Experiment {
   name: string;
   description?: string;
   key: string;
-  status: 'DRAFT' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'ARCHIVED';
+  status: "DRAFT" | "RUNNING" | "PAUSED" | "COMPLETED" | "ARCHIVED";
   trafficSplit: number;
   startDate?: string;
   endDate?: string;
@@ -208,10 +230,16 @@ export interface ConversionEvent {
 
 export interface ABTestAnalytics {
   getExperiment: (experimentKey: string) => Promise<Experiment | null>;
-  getAssignment: (experimentKey: string, options?: AssignmentOptions) => Promise<ExperimentAssignment | null>;
+  getAssignment: (
+    experimentKey: string,
+    options?: AssignmentOptions
+  ) => Promise<ExperimentAssignment | null>;
   trackConversion: (conversion: ConversionEvent) => Promise<void>;
   getAllExperiments: () => Promise<Experiment[]>;
-  isVariantEnabled: (experimentKey: string, variantKey: string) => Promise<boolean>;
+  isVariantEnabled: (
+    experimentKey: string,
+    variantKey: string
+  ) => Promise<boolean>;
   getActiveVariants: () => Promise<Record<string, ExperimentAssignment>>;
 }
 
