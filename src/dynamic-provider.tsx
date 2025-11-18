@@ -1,10 +1,15 @@
 import React, { ReactNode, ComponentType, createContext } from "react";
 import { AnalyticsConfig, AnalyticsInstance } from "./types";
 
-// Analytics Context for hooks
-export const MentiqAnalyticsContext = createContext<AnalyticsInstance | null>(
-  null
-);
+// Analytics Context for hooks - only create on client side
+let MentiqAnalyticsContext: React.Context<AnalyticsInstance | null> | null = null;
+
+function getContext() {
+  if (typeof window !== "undefined" && !MentiqAnalyticsContext) {
+    MentiqAnalyticsContext = createContext<AnalyticsInstance | null>(null);
+  }
+  return MentiqAnalyticsContext;
+}
 
 interface MentiqAnalyticsProviderProps {
   config: AnalyticsConfig;
@@ -62,10 +67,15 @@ export function MentiqAnalyticsProvider({
             };
           }, [analytics]);
 
+          const Context = getContext();
+          if (!Context) {
+            return <>{children}</>;
+          }
+
           return (
-            <MentiqAnalyticsContext.Provider value={analytics}>
+            <Context.Provider value={analytics}>
               {children}
-            </MentiqAnalyticsContext.Provider>
+            </Context.Provider>
           );
         };
 
@@ -124,15 +134,70 @@ export function withMentiqAnalytics<P extends object>(
 }
 
 /**
- * Hook for lazy loading MentiQ analytics in components
+ * Hook for accessing MentiQ analytics from context
  */
-export function useMentiqAnalytics(config: AnalyticsConfig) {
+export function useMentiqAnalytics() {
+  const Context = getContext();
+  
+  if (!Context) {
+    throw new Error("useMentiqAnalytics must be used within a MentiqAnalyticsProvider and on the client side");
+  }
+
+  const analytics = React.useContext(Context);
+
+  if (!analytics) {
+    throw new Error("useMentiqAnalytics must be used within a MentiqAnalyticsProvider");
+  }
+
+  const track = React.useCallback(
+    (event: string, properties?: any) => {
+      analytics.track(event, properties);
+    },
+    [analytics]
+  );
+
+  const page = React.useCallback(
+    (properties?: any) => {
+      analytics.page(properties);
+    },
+    [analytics]
+  );
+
+  const identify = React.useCallback(
+    (userId: string, properties?: any) => {
+      analytics.identify(userId, properties);
+    },
+    [analytics]
+  );
+
+  const reset = React.useCallback(() => {
+    analytics.reset();
+  }, [analytics]);
+
+  const flush = React.useCallback(async () => {
+    await analytics.flush();
+  }, [analytics]);
+
+  return {
+    track,
+    page,
+    identify,
+    reset,
+    flush,
+    analytics,
+  };
+}
+
+/**
+ * Hook for lazy loading analytics (alternative pattern)
+ */
+export function useLazyMentiqAnalytics(config: AnalyticsConfig) {
   const [analytics, setAnalytics] = React.useState<any>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
 
   const loadAnalytics = React.useCallback(async () => {
-    if (analytics || isLoading) return;
+    if (analytics || isLoading || typeof window === "undefined") return;
 
     setIsLoading(true);
     setError(null);

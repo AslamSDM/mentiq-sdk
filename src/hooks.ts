@@ -1,99 +1,19 @@
-import { useContext, useEffect, useRef, useCallback } from "react";
-import { MentiqAnalyticsContext } from "./dynamic-provider";
+import { useEffect, useRef, useCallback } from "react";
 import {
   EventProperties,
   UserProperties,
   PerformanceData,
   SessionData,
 } from "./types";
-
-export function useMentiqAnalytics() {
-  const analytics = useContext(MentiqAnalyticsContext);
-
-  if (!analytics) {
-    throw new Error(
-      "useMentiqAnalytics must be used within a MentiqAnalyticsProvider"
-    );
-  }
-
-  const track = useCallback(
-    (event: string, properties?: EventProperties) => {
-      analytics.track(event, properties);
-    },
-    [analytics]
-  );
-
-  const page = useCallback(
-    (properties?: EventProperties) => {
-      analytics.page(properties);
-    },
-    [analytics]
-  );
-
-  const identify = useCallback(
-    (userId: string, properties?: UserProperties) => {
-      analytics.identify(userId, properties);
-    },
-    [analytics]
-  );
-
-  const reset = useCallback(() => {
-    analytics.reset();
-  }, [analytics]);
-
-  const flush = useCallback(async () => {
-    await analytics.flush();
-  }, [analytics]);
-
-  const trackError = useCallback(
-    (error: string | Error, properties?: EventProperties) => {
-      analytics.trackCustomError(error, properties);
-    },
-    [analytics]
-  );
-
-  const trackPerformance = useCallback(
-    (performanceData: PerformanceData) => {
-      analytics.trackPerformance(performanceData);
-    },
-    [analytics]
-  );
-
-  const getSessionData = useCallback((): SessionData => {
-    return analytics.getSessionData();
-  }, [analytics]);
-
-  const getQueueSize = useCallback((): number => {
-    return analytics.getQueueSize();
-  }, [analytics]);
-
-  const trackSubscriptionCancellation = useCallback(
-    (properties?: EventProperties) => {
-      analytics.track("subscription_cancelled", properties);
-    },
-    [analytics]
-  );
-
-  return {
-    track,
-    page,
-    identify,
-    reset,
-    flush,
-    trackError,
-    trackPerformance,
-    getSessionData,
-    getQueueSize,
-    trackSubscriptionCancellation,
-    analytics,
-  };
-}
+import { useMentiqAnalytics } from "./dynamic-provider";
 
 export function usePageTracking(properties?: EventProperties) {
   const { page } = useMentiqAnalytics();
 
   useEffect(() => {
-    page(properties);
+    if (typeof window !== "undefined") {
+      page(properties);
+    }
   }, [page, properties]);
 }
 
@@ -143,6 +63,8 @@ export function useElementTracking(
   const hasTriggered = useRef(false);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    
     const element = elementRef.current;
     if (!element) return;
 
@@ -173,13 +95,17 @@ export function useElementTracking(
 }
 
 export function useSessionTracking() {
-  const { getSessionData, analytics } = useMentiqAnalytics();
+  const { analytics } = useMentiqAnalytics();
+
+  const getSessionData = useCallback(() => {
+    return analytics?.getSessionData?.() || {};
+  }, [analytics]);
 
   const sessionData = getSessionData();
 
   return {
     sessionData,
-    sessionId: analytics.getSessionId(),
+    sessionId: analytics?.getSessionId?.(),
     isActive: sessionData?.isActive || false,
     duration: sessionData?.duration || 0,
     pageViews: sessionData?.pageViews || 0,
@@ -189,24 +115,30 @@ export function useSessionTracking() {
 }
 
 export function useErrorTracking() {
-  const { trackError } = useMentiqAnalytics();
+  const { track } = useMentiqAnalytics();
 
   const trackJavaScriptError = useCallback(
     (error: Error, properties?: EventProperties) => {
-      trackError(error, properties);
+      track("javascript_error", { 
+        message: error.message,
+        stack: error.stack,
+        ...properties 
+      });
     },
-    [trackError]
+    [track]
   );
 
   const trackCustomError = useCallback(
     (message: string, properties?: EventProperties) => {
-      trackError(message, properties);
+      track("custom_error", { message, ...properties });
     },
-    [trackError]
+    [track]
   );
 
   // Auto-track React errors
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
     const handleError = (event: ErrorEvent) => {
       trackJavaScriptError(event.error, {
         filename: event.filename,
@@ -221,18 +153,13 @@ export function useErrorTracking() {
       });
     };
 
-    if (typeof window !== "undefined") {
-      window.addEventListener("error", handleError);
-      window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
-      return () => {
-        window.removeEventListener("error", handleError);
-        window.removeEventListener(
-          "unhandledrejection",
-          handleUnhandledRejection
-        );
-      };
-    }
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
   }, [trackJavaScriptError, trackCustomError]);
 
   return {
@@ -242,15 +169,13 @@ export function useErrorTracking() {
 }
 
 export function usePerformanceTracking() {
-  const { trackPerformance } = useMentiqAnalytics();
+  const { track } = useMentiqAnalytics();
 
   useEffect(() => {
     if (typeof window === "undefined" || !("performance" in window)) return;
 
     const measurePerformance = () => {
-      const navigation = performance.getEntriesByType(
-        "navigation"
-      )[0] as PerformanceNavigationTiming;
+      const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
       const paint = performance.getEntriesByType("paint");
 
       if (navigation) {
@@ -258,54 +183,10 @@ export function usePerformanceTracking() {
           loadTime: navigation.loadEventEnd - navigation.fetchStart,
           domReady: navigation.domContentLoadedEventEnd - navigation.fetchStart,
           firstPaint: paint.find((p) => p.name === "first-paint")?.startTime,
-          firstContentfulPaint: paint.find(
-            (p) => p.name === "first-contentful-paint"
-          )?.startTime,
+          firstContentfulPaint: paint.find((p) => p.name === "first-contentful-paint")?.startTime,
         };
 
-        // Get Core Web Vitals if available
-        if ("PerformanceObserver" in window) {
-          try {
-            // Largest Contentful Paint
-            new PerformanceObserver((list) => {
-              const entries = list.getEntries();
-              const lcpEntry = entries[entries.length - 1];
-              if (lcpEntry) {
-                performanceData.largestContentfulPaint = lcpEntry.startTime;
-                trackPerformance({ ...performanceData });
-              }
-            }).observe({ entryTypes: ["largest-contentful-paint"] });
-
-            // First Input Delay
-            new PerformanceObserver((list) => {
-              const entries = list.getEntries();
-              entries.forEach((entry: any) => {
-                if (entry.processingStart && entry.startTime) {
-                  performanceData.firstInputDelay =
-                    entry.processingStart - entry.startTime;
-                  trackPerformance({ ...performanceData });
-                }
-              });
-            }).observe({ entryTypes: ["first-input"] });
-
-            // Cumulative Layout Shift
-            new PerformanceObserver((list) => {
-              let clsValue = 0;
-              list.getEntries().forEach((entry: any) => {
-                if (!entry.hadRecentInput) {
-                  clsValue += entry.value;
-                }
-              });
-              performanceData.cumulativeLayoutShift = clsValue;
-              trackPerformance({ ...performanceData });
-            }).observe({ entryTypes: ["layout-shift"] });
-          } catch (e) {
-            // Fallback if PerformanceObserver is not supported
-            trackPerformance(performanceData);
-          }
-        } else {
-          trackPerformance(performanceData);
-        }
+        track("performance_metrics", performanceData);
       }
     };
 
@@ -316,7 +197,7 @@ export function usePerformanceTracking() {
       window.addEventListener("load", measurePerformance);
       return () => window.removeEventListener("load", measurePerformance);
     }
-  }, [trackPerformance]);
+  }, [track]);
 
   const measureCustomPerformance = useCallback(
     (label: string) => {
@@ -329,9 +210,7 @@ export function usePerformanceTracking() {
           performance.measure(label, `${label}-start`, `${label}-end`);
           const measure = performance.getEntriesByName(label)[0];
           if (measure) {
-            trackPerformance({
-              [label]: measure.duration,
-            });
+            track("custom_performance", { [label]: measure.duration });
           }
           performance.clearMarks(`${label}-start`);
           performance.clearMarks(`${label}-end`);
@@ -339,7 +218,7 @@ export function usePerformanceTracking() {
         },
       };
     },
-    [trackPerformance]
+    [track]
   );
 
   return {
@@ -347,5 +226,8 @@ export function usePerformanceTracking() {
   };
 }
 
-// Backward compatibility alias
+// Re-export for convenience
+export { useMentiqAnalytics };
+
+// Backward compatibility alias  
 export const useAnalytics = useMentiqAnalytics;
