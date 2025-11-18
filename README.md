@@ -14,9 +14,11 @@ A powerful, lightweight analytics SDK for React and Next.js applications with ad
 ### Advanced Features
 - 🔥 **Heatmap Tracking**: Click, hover, and scroll tracking
 - 📊 **Session Monitoring**: User activity, scroll depth, engagement metrics
+- 🎥 **Session Recording**: Replay user sessions with rrweb
 - ⚡ **Performance Tracking**: Core Web Vitals, custom performance metrics
 - 🚨 **Error Tracking**: JavaScript errors, unhandled rejections, React errors
 - 🎭 **React Components**: Pre-built tracking components and HOCs
+- 🧪 **A/B Testing**: Experiment management and variant tracking
 
 ### Technical Features
 - 📦 Event queuing with configurable batch sizes
@@ -128,6 +130,11 @@ const {
   trackPerformance,         // Track performance metrics
   getSessionData,           // Get current session data
   getQueueSize,             // Get current queue size
+  startRecording,           // Start session recording
+  stopRecording,            // Stop session recording
+  pauseRecording,           // Pause session recording
+  resumeRecording,          // Resume session recording
+  isRecordingActive,        // Check if recording is active
   trackSubscriptionCancellation, // Track subscription cancellations
 } = useAnalytics();
 ```
@@ -285,6 +292,103 @@ await fetchData();
 measurement.end(); // Automatically tracked
 ```
 
+## 🎥 Session Recording
+
+Record and replay user sessions with rrweb integration.
+
+### Installation
+
+```bash
+npm install rrweb
+```
+
+### Basic Usage
+
+```tsx
+import { AnalyticsProvider } from 'mentiq-sdk';
+
+<AnalyticsProvider 
+  config={{
+    apiKey: 'your-api-key',
+    projectId: 'your-project-id',
+    enableSessionRecording: true, // Enable automatic recording
+  }}
+>
+  <App />
+</AnalyticsProvider>
+```
+
+### Manual Control
+
+```tsx
+import { useAnalytics } from 'mentiq-sdk';
+
+function RecordingControls() {
+  const analytics = useAnalytics();
+
+  return (
+    <div>
+      <button onClick={() => analytics.startRecording()}>
+        Start Recording
+      </button>
+      <button onClick={() => analytics.stopRecording()}>
+        Stop Recording
+      </button>
+      <button onClick={() => analytics.pauseRecording()}>
+        Pause
+      </button>
+      <button onClick={() => analytics.resumeRecording()}>
+        Resume
+      </button>
+      {analytics.isRecordingActive() && (
+        <span>🔴 Recording Active</span>
+      )}
+    </div>
+  );
+}
+```
+
+### Privacy & Masking
+
+```tsx
+// Add CSS classes to protect sensitive data
+<input 
+  type="password" 
+  className="mentiq-block" // Completely block from recording
+/>
+
+<div className="mentiq-mask">
+  Sensitive text content
+</div>
+
+<div className="mentiq-ignore">
+  This section won't be recorded
+</div>
+```
+
+### Custom Configuration
+
+```tsx
+import { SessionRecorder } from 'mentiq-sdk';
+
+const recorder = new SessionRecorder(
+  analytics.config,
+  analytics.getSessionId(),
+  {
+    maxDuration: 10 * 60 * 1000, // 10 minutes
+    blockClass: 'sensitive',
+    maskAllInputs: true,
+    sampling: {
+      mousemove: 50,    // Sample every 50ms
+      scroll: 150,       // Sample every 150ms
+      input: 'last',     // Only record final value
+    },
+  }
+);
+```
+
+**Note**: Recordings are automatically uploaded to `/api/v1/sessions/:session_id/recordings` every 10 seconds. See [SESSION-RECORDING.md](./SESSION-RECORDING.md) for detailed documentation.
+
 ## 📱 Session Management
 
 Rich session tracking includes:
@@ -409,6 +513,37 @@ analytics.clearQueue(): void
 analytics.trackCustomError(error: string | Error, properties?: EventProperties)
 analytics.trackPerformance(data: PerformanceData)
 ```
+
+## ✅ Quick Start Checklist
+
+### Basic Setup
+- [ ] Install SDK: `npm install mentiq-sdk`
+- [ ] Wrap app with `<AnalyticsProvider>`
+- [ ] Add your API key and project ID
+- [ ] Verify events in your dashboard
+
+### Session Recording Setup
+- [ ] Install rrweb: `npm install rrweb`
+- [ ] Enable `enableSessionRecording: true`
+- [ ] Add privacy CSS classes to sensitive elements
+- [ ] Test recording start/stop
+- [ ] Verify uploads to backend endpoint
+
+### Privacy & Compliance
+- [ ] Add `.mentiq-block` to password inputs
+- [ ] Add `.mentiq-mask` to sensitive text
+- [ ] Add `.mentiq-ignore` to private sections
+- [ ] Implement user consent if required
+- [ ] Review and test privacy settings
+
+### Production Optimization
+- [ ] Configure appropriate batch sizes
+- [ ] Set reasonable flush intervals
+- [ ] Adjust sampling rates for performance
+- [ ] Set max session duration
+- [ ] Test error handling and retries
+
+See [SESSION-RECORDING.md](./SESSION-RECORDING.md) for detailed setup instructions.
 
 ## 🚀 Publishing
 

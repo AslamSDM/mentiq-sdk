@@ -13,11 +13,13 @@ module.exports = [
         file: packageJson.main,
         format: "cjs",
         sourcemap: true,
+        inlineDynamicImports: true,
       },
       {
         file: packageJson.module,
         format: "esm",
         sourcemap: true,
+        inlineDynamicImports: true,
       },
     ],
     plugins: [
@@ -29,7 +31,7 @@ module.exports = [
         declarationDir: "./dist/types",
       }),
     ],
-    external: ["react", "react-dom"],
+    external: ["react", "react-dom", "rrweb"],
   },
   {
     input: "dist/types/index.d.ts",

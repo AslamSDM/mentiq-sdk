@@ -101,8 +101,38 @@ export interface AnalyticsInstance {
     properties?: EventProperties
   ) => void;
   trackPerformance: (performanceData: PerformanceData) => void;
+  trackFeatureUsage: (
+    featureName: string,
+    properties?: EventProperties
+  ) => void;
+  trackFunnelStep: (
+    funnelName: string,
+    stepName: string,
+    stepIndex: number,
+    properties?: EventProperties
+  ) => void;
+  completeFunnel: (funnelName: string, properties?: EventProperties) => void;
+  startFunnel: (funnelName: string, properties?: EventProperties) => void;
+  advanceFunnel: (
+    funnelName: string,
+    stepName: string,
+    properties?: EventProperties
+  ) => void;
+  abandonFunnel: (
+    funnelName: string,
+    reason?: string,
+    properties?: EventProperties
+  ) => void;
+  getFunnelState: (funnelName: string) => FunnelState | undefined;
+  getActiveSession: () => SessionData;
+  calculateEngagementScore: () => number;
   getQueueSize: () => number;
   clearQueue: () => void;
+  startRecording: () => void;
+  stopRecording: () => void;
+  pauseRecording: () => void;
+  resumeRecording: () => void;
+  isRecordingActive: () => boolean;
   config: {
     apiKey: string;
     projectId: string;
@@ -151,6 +181,27 @@ export interface SessionData {
   maxScrollDepth: number;
   isActive: boolean;
   events: string[];
+  scrollEvents?: number;
+  clickEvents?: number;
+  pageChanges?: number;
+  engagementScore?: number;
+  bounceLikelihood?: number;
+}
+
+export interface FunnelStep {
+  stepName: string;
+  stepIndex: number;
+  timestamp: number;
+  timeInFunnel: number;
+  properties?: EventProperties;
+}
+
+export interface FunnelState {
+  funnelName: string;
+  currentStep: number;
+  startTime: number;
+  steps: FunnelStep[];
+  isActive: boolean;
 }
 
 export interface PerformanceData {

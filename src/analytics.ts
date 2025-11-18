@@ -22,6 +22,7 @@ import {
   clearUserId,
   debounce,
 } from "./utils";
+import { SessionRecorder } from "./session-recording";
 
 export class Analytics implements AnalyticsInstance {
   public config: AnalyticsConfig & {
@@ -47,6 +48,12 @@ export class Analytics implements AnalyticsInstance {
   private sessionData: SessionData;
   private heatmapListeners: (() => void)[] = [];
   private errorListeners: (() => void)[] = [];
+  private sessionRecorder?: SessionRecorder;
+  private funnelState: Map<
+    string,
+    { currentStep: number; startTime: number; steps: string[] }
+  > = new Map();
+  private funnelAbandonmentTimer: Map<string, NodeJS.Timeout> = new Map();
 
   constructor(config: AnalyticsConfig) {
     this.config = {
@@ -79,6 +86,11 @@ export class Analytics implements AnalyticsInstance {
       maxScrollDepth: 0,
       isActive: true,
       events: [],
+      scrollEvents: 0,
+      clickEvents: 0,
+      pageChanges: 0,
+      engagementScore: 0,
+      bounceLikelihood: 0,
     };
   }
 
@@ -125,6 +137,11 @@ export class Analytics implements AnalyticsInstance {
       this.setupErrorTracking();
     }
 
+    // Setup session recording
+    if (this.config.enableSessionRecording && typeof window !== "undefined") {
+      this.setupSessionRecording();
+    }
+
     this.isInitialized = true;
 
     if (this.config.debug) {
@@ -164,7 +181,7 @@ export class Analytics implements AnalyticsInstance {
       window.addEventListener(event, updateSession, { passive: true });
     });
 
-    // Track scroll depth
+    // Track scroll depth and scroll events
     const trackScrollDepth = debounce(() => {
       const scrollTop =
         window.pageYOffset || document.documentElement.scrollTop;
@@ -179,9 +196,19 @@ export class Analytics implements AnalyticsInstance {
         this.sessionData.maxScrollDepth,
         scrollDepth
       );
+
+      // Increment scroll events counter
+      this.sessionData.scrollEvents = (this.sessionData.scrollEvents || 0) + 1;
     }, 1000);
 
+    // Track click events for detailed metrics
+    const trackClicks = (event: MouseEvent) => {
+      this.sessionData.clickEvents = (this.sessionData.clickEvents || 0) + 1;
+      this.sessionData.clicks = this.sessionData.clickEvents;
+    };
+
     window.addEventListener("scroll", trackScrollDepth, { passive: true });
+    window.addEventListener("click", trackClicks, { passive: true });
 
     // Initialize session timer
     updateSession();
@@ -398,6 +425,10 @@ export class Analytics implements AnalyticsInstance {
   public page(properties?: PageProperties): void {
     const analyticsEvent = createEvent("page", undefined, properties);
     this.enqueueEvent(analyticsEvent);
+
+    // Update session page tracking
+    this.sessionData.pageViews++;
+    this.sessionData.pageChanges = (this.sessionData.pageChanges || 0) + 1;
   }
 
   public identify(userId: string, traits?: UserProperties): void {
@@ -432,9 +463,9 @@ export class Analytics implements AnalyticsInstance {
 
     try {
       await Promise.all(
-        batches.map((batch) =>
+        batches?.map((batch) =>
           Promise.all(
-            this.providers.map((provider) => this.sendBatch(provider, batch))
+            this.providers?.map((provider) => this.sendBatch(provider, batch))
           )
         )
       );
@@ -472,6 +503,98 @@ export class Analytics implements AnalyticsInstance {
     return { ...this.sessionData };
   }
 
+  public getActiveSession(): SessionData {
+    return this.calculateDetailedSessionMetrics();
+  }
+
+  public calculateEngagementScore(): number {
+    const {
+      clicks,
+      scrollDepth,
+      duration,
+      pageViews,
+      clickEvents,
+      scrollEvents,
+    } = this.sessionData;
+
+    // Calculate session duration in minutes
+    const sessionDuration = duration
+      ? duration / 1000 / 60
+      : (Date.now() - this.sessionData.startTime) / 1000 / 60;
+
+    // Weighted engagement score calculation
+    let score = 0;
+
+    // Click engagement (up to 25 points)
+    const clickScore = Math.min((clickEvents || clicks) * 2, 25);
+    score += clickScore;
+
+    // Scroll engagement (up to 20 points)
+    const scrollScore = Math.min(scrollDepth || 0, 20);
+    score += scrollScore;
+
+    // Time engagement (up to 30 points) - diminishing returns after 10 minutes
+    const timeScore = Math.min(sessionDuration * 3, 30);
+    score += timeScore;
+
+    // Page view engagement (up to 20 points)
+    const pageScore = Math.min((pageViews || 0) * 4, 20);
+    score += pageScore;
+
+    // Scroll event engagement (up to 5 points)
+    const scrollEventScore = Math.min((scrollEvents || 0) * 0.5, 5);
+    score += scrollEventScore;
+
+    // Normalize to 0-100 scale
+    const finalScore = Math.min(score, 100);
+
+    // Update session data
+    this.sessionData.engagementScore = finalScore;
+
+    return finalScore;
+  }
+
+  private calculateDetailedSessionMetrics(): SessionData {
+    const currentTime = Date.now();
+    const duration = currentTime - this.sessionData.startTime;
+
+    // Update detailed metrics
+    const updatedSessionData = {
+      ...this.sessionData,
+      duration,
+      endTime: this.sessionData.isActive ? undefined : currentTime,
+      engagementScore: this.calculateEngagementScore(),
+      bounceLikelihood: this.calculateBounceLikelihood(),
+    };
+
+    return updatedSessionData;
+  }
+
+  private calculateBounceLikelihood(): number {
+    const { pageViews, clickEvents, scrollEvents, scrollDepth } =
+      this.sessionData;
+    const sessionDuration = (Date.now() - this.sessionData.startTime) / 1000; // in seconds
+
+    // Factors that reduce bounce likelihood
+    let bounceScore = 100; // Start with 100% bounce likelihood
+
+    // Reduce bounce likelihood based on engagement
+    if (pageViews > 1) bounceScore -= 30; // Multiple pages viewed
+    if ((clickEvents || 0) > 3) bounceScore -= 20; // Multiple clicks
+    if ((scrollEvents || 0) > 5) bounceScore -= 15; // Active scrolling
+    if ((scrollDepth || 0) > 50) bounceScore -= 15; // Scrolled past 50%
+    if (sessionDuration > 30) bounceScore -= 10; // Stayed more than 30 seconds
+    if (sessionDuration > 120) bounceScore -= 10; // Stayed more than 2 minutes
+
+    // Ensure bounce score is between 0 and 100
+    bounceScore = Math.max(0, Math.min(100, bounceScore));
+
+    // Update session data
+    this.sessionData.bounceLikelihood = bounceScore;
+
+    return bounceScore;
+  }
+
   public trackCustomError(
     error: string | Error,
     properties?: EventProperties
@@ -494,6 +617,188 @@ export class Analytics implements AnalyticsInstance {
       performance: performanceData,
     });
     this.enqueueEvent(analyticsEvent);
+  }
+
+  public trackFeatureUsage(
+    featureName: string,
+    properties?: EventProperties
+  ): void {
+    this.track("feature_used", {
+      feature_name: featureName,
+      ...properties,
+    });
+  }
+
+  public trackFunnelStep(
+    funnelName: string,
+    stepName: string,
+    stepIndex: number,
+    properties?: EventProperties
+  ): void {
+    this.track("funnel_step", {
+      funnel_name: funnelName,
+      step_name: stepName,
+      step_index: stepIndex,
+      ...properties,
+    });
+  }
+
+  public completeFunnel(
+    funnelName: string,
+    properties?: EventProperties
+  ): void {
+    this.track("funnel_completed", {
+      funnel_name: funnelName,
+      ...properties,
+    });
+
+    // Clear funnel state on completion
+    this.funnelState.delete(funnelName);
+    const timer = this.funnelAbandonmentTimer.get(funnelName);
+    if (timer) {
+      clearTimeout(timer);
+      this.funnelAbandonmentTimer.delete(funnelName);
+    }
+  }
+
+  public startFunnel(funnelName: string, properties?: EventProperties): void {
+    // Clear any existing funnel state
+    this.clearFunnelState(funnelName);
+
+    this.funnelState.set(funnelName, {
+      currentStep: 0,
+      startTime: Date.now(),
+      steps: [],
+    });
+
+    this.trackFunnelStep(funnelName, "start", 0, properties);
+
+    // Set abandonment timer (5 minutes default)
+    const abandonmentTimeout = setTimeout(() => {
+      this.abandonFunnel(funnelName, "timeout");
+    }, 5 * 60 * 1000);
+
+    this.funnelAbandonmentTimer.set(funnelName, abandonmentTimeout);
+
+    if (this.config.debug) {
+      console.log(`MentiQ Analytics: Funnel "${funnelName}" started`);
+    }
+  }
+
+  public advanceFunnel(
+    funnelName: string,
+    stepName: string,
+    properties?: EventProperties
+  ): void {
+    const state = this.funnelState.get(funnelName);
+    if (!state) {
+      if (this.config.debug) {
+        console.warn(`Funnel ${funnelName} not started`);
+      }
+      return;
+    }
+
+    state.currentStep++;
+    const timeInFunnel = Date.now() - state.startTime;
+
+    // Add step to history
+    state.steps.push(stepName);
+
+    this.trackFunnelStep(funnelName, stepName, state.currentStep, {
+      time_in_funnel: timeInFunnel,
+      previous_step: state.steps[state.steps.length - 2] || "start",
+      total_steps_completed: state.currentStep,
+      ...properties,
+    });
+
+    // Reset abandonment timer
+    this.resetAbandonmentTimer(funnelName);
+
+    if (this.config.debug) {
+      console.log(
+        `MentiQ Analytics: Funnel "${funnelName}" advanced to step ${state.currentStep}: ${stepName}`
+      );
+    }
+  }
+
+  public abandonFunnel(
+    funnelName: string,
+    reason?: string,
+    properties?: EventProperties
+  ): void {
+    const state = this.funnelState.get(funnelName);
+    if (!state) return;
+
+    const timeBeforeAbandon = Date.now() - state.startTime;
+
+    this.track("funnel_abandoned", {
+      funnel_name: funnelName,
+      abandoned_at_step: state.currentStep,
+      abandoned_step_name: state.steps[state.steps.length - 1] || "start",
+      time_before_abandon: timeBeforeAbandon,
+      abandon_reason: reason || "unknown",
+      steps_completed_count: state.steps.length,
+      steps_completed_names: state.steps.join(","),
+      completion_percentage: this.calculateFunnelCompletion(
+        funnelName,
+        state.currentStep
+      ),
+      ...properties,
+    });
+
+    this.clearFunnelState(funnelName);
+
+    if (this.config.debug) {
+      console.log(
+        `MentiQ Analytics: Funnel "${funnelName}" abandoned at step ${state.currentStep}, reason: ${reason}`
+      );
+    }
+  }
+
+  public getFunnelState(funnelName: string): any {
+    const state = this.funnelState.get(funnelName);
+    if (!state) return undefined;
+
+    return {
+      funnelName,
+      currentStep: state.currentStep,
+      startTime: state.startTime,
+      steps: [...state.steps],
+      isActive: true,
+      timeInFunnel: Date.now() - state.startTime,
+    };
+  }
+
+  private clearFunnelState(funnelName: string): void {
+    this.funnelState.delete(funnelName);
+    const timer = this.funnelAbandonmentTimer.get(funnelName);
+    if (timer) {
+      clearTimeout(timer);
+      this.funnelAbandonmentTimer.delete(funnelName);
+    }
+  }
+
+  private resetAbandonmentTimer(funnelName: string): void {
+    const timer = this.funnelAbandonmentTimer.get(funnelName);
+    if (timer) {
+      clearTimeout(timer);
+    }
+
+    const newTimer = setTimeout(() => {
+      this.abandonFunnel(funnelName, "timeout");
+    }, 5 * 60 * 1000);
+
+    this.funnelAbandonmentTimer.set(funnelName, newTimer);
+  }
+
+  private calculateFunnelCompletion(
+    funnelName: string,
+    currentStep: number
+  ): number {
+    // This could be enhanced to use predefined funnel definitions
+    // For now, assume a typical funnel has 5 steps
+    const typicalFunnelSteps = 5;
+    return Math.min(100, (currentStep / typicalFunnelSteps) * 100);
   }
 
   public getQueueSize(): number {
@@ -548,7 +853,7 @@ export class Analytics implements AnalyticsInstance {
 
     // For our backend, we'll send the batch as a single request instead of individual events
     try {
-      const backendEvents = batch.map((queuedEvent) =>
+      const backendEvents = batch?.map((queuedEvent) =>
         this.transformEventForBackend(queuedEvent.event)
       );
 
@@ -690,6 +995,69 @@ export class Analytics implements AnalyticsInstance {
     }
   }
 
+  private setupSessionRecording(): void {
+    if (typeof window === "undefined") return;
+
+    try {
+      this.sessionRecorder = new SessionRecorder(
+        this.config,
+        this.getSessionId()
+      );
+
+      // Auto-start recording if enabled
+      this.sessionRecorder.start();
+
+      if (this.config.debug) {
+        console.log("Session recording initialized");
+      }
+    } catch (error) {
+      if (this.config.debug) {
+        console.error("Failed to initialize session recording:", error);
+      }
+    }
+  }
+
+  public startRecording(): void {
+    if (!this.sessionRecorder) {
+      if (typeof window !== "undefined") {
+        this.sessionRecorder = new SessionRecorder(
+          this.config,
+          this.getSessionId()
+        );
+      } else {
+        if (this.config.debug) {
+          console.warn(
+            "Session recording is only available in browser environments"
+          );
+        }
+        return;
+      }
+    }
+    this.sessionRecorder.start();
+  }
+
+  public stopRecording(): void {
+    if (this.sessionRecorder) {
+      this.sessionRecorder.stop();
+    }
+  }
+
+  public pauseRecording(): void {
+    if (this.sessionRecorder) {
+      this.sessionRecorder.pause();
+    }
+  }
+
+  public resumeRecording(): void {
+    if (this.sessionRecorder) {
+      this.sessionRecorder.resume();
+    }
+  }
+
+  public isRecordingActive(): boolean {
+    return this.sessionRecorder?.isActive() || false;
+  }
+
   public destroy(): void {
     if (this.flushTimer) {
       clearInterval(this.flushTimer);
@@ -706,6 +1074,11 @@ export class Analytics implements AnalyticsInstance {
     // Clean up error listeners
     this.errorListeners.forEach((cleanup) => cleanup());
     this.errorListeners = [];
+
+    // Stop session recording
+    if (this.sessionRecorder) {
+      this.sessionRecorder.stop();
+    }
 
     // End current session
     if (this.sessionData.isActive) {

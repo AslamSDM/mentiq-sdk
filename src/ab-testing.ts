@@ -93,10 +93,13 @@ export class ABTesting implements ABTestAnalytics {
 
   async getAllExperiments(): Promise<Experiment[]> {
     try {
-      const response = await fetch(`${this.apiEndpoint}/experiments`, {
-        method: "GET",
-        headers: this.headers,
-      });
+      const response = await fetch(
+        `${this.apiEndpoint}/projects/${this.config.projectId}/experiments`,
+        {
+          method: "GET",
+          headers: this.headers,
+        }
+      );
 
       if (!response.ok) {
         console.error(`Failed to get all experiments: ${response.statusText}`);
