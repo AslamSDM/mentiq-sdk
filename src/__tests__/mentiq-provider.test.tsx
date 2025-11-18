@@ -1,10 +1,15 @@
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { MentiqAnalyticsProvider, useMentiqAnalytics } from '../dynamic-provider';
+import React from "react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import {
+  MentiqAnalyticsProvider,
+  useMentiqAnalytics,
+} from "../dynamic-provider";
 
 // Mock analytics module
-jest.mock('../analytics', () => ({
+jest.mock("../analytics", () => ({
   Analytics: jest.fn().mockImplementation(() => ({
+    config: { apiKey: "test-key", projectId: "test-project" },
+    endpoint: "http://localhost:8080",
     track: jest.fn(),
     page: jest.fn(),
     identify: jest.fn(),
@@ -12,17 +17,20 @@ jest.mock('../analytics', () => ({
     flush: jest.fn().mockResolvedValue(undefined),
     destroy: jest.fn(),
     getSessionData: jest.fn().mockReturnValue({
-      sessionId: 'test-session',
+      sessionId: "test-session",
+      startTime: Date.now(),
       isActive: true,
       duration: 1000,
       pageViews: 1,
       clicks: 0,
       scrollDepth: 0,
+      maxScrollDepth: 0,
+      events: [],
     }),
     getQueueSize: jest.fn().mockReturnValue(0),
     trackCustomError: jest.fn(),
     trackPerformance: jest.fn(),
-    getSessionId: jest.fn().mockReturnValue('test-session-id'),
+    getSessionId: jest.fn().mockReturnValue("test-session-id"),
   })),
 }));
 
@@ -32,13 +40,11 @@ function TestComponent() {
 
   return (
     <div>
-      <button onClick={() => track('test_event', { test: true })}>
+      <button onClick={() => track("test_event", { test: true })}>
         Track Event
       </button>
-      <button onClick={() => page({ path: '/test' })}>
-        Track Page
-      </button>
-      <button onClick={() => identify('user-123', { name: 'Test User' })}>
+      <button onClick={() => page({ path: "/test" })}>Track Page</button>
+      <button onClick={() => identify("user-123", { name: "Test User" })}>
         Identify User
       </button>
       <div data-testid="session-id">{analytics?.getSessionId()}</div>
@@ -46,19 +52,19 @@ function TestComponent() {
   );
 }
 
-describe('MentiqAnalyticsProvider', () => {
+describe("MentiqAnalyticsProvider", () => {
   const defaultConfig = {
-    apiKey: 'test-api-key',
-    projectId: 'test-project',
+    apiKey: "test-api-key",
+    projectId: "test-project",
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should render loading state initially', async () => {
+  it("should render loading state initially", async () => {
     render(
-      <MentiqAnalyticsProvider 
+      <MentiqAnalyticsProvider
         config={defaultConfig}
         loading={<div>Loading analytics...</div>}
       >
@@ -66,10 +72,10 @@ describe('MentiqAnalyticsProvider', () => {
       </MentiqAnalyticsProvider>
     );
 
-    expect(screen.getByText('Loading analytics...')).toBeInTheDocument();
+    expect(screen.getByText("Loading analytics...")).toBeInTheDocument();
   });
 
-  it('should render children after analytics loads', async () => {
+  it("should render children after analytics loads", async () => {
     render(
       <MentiqAnalyticsProvider config={defaultConfig}>
         <TestComponent />
@@ -77,11 +83,11 @@ describe('MentiqAnalyticsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Track Event')).toBeInTheDocument();
+      expect(screen.getByText("Track Event")).toBeInTheDocument();
     });
   });
 
-  it('should provide analytics context to children', async () => {
+  it("should provide analytics context to children", async () => {
     render(
       <MentiqAnalyticsProvider config={defaultConfig}>
         <TestComponent />
@@ -89,11 +95,13 @@ describe('MentiqAnalyticsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('session-id')).toHaveTextContent('test-session-id');
+      expect(screen.getByTestId("session-id")).toHaveTextContent(
+        "test-session-id"
+      );
     });
   });
 
-  it('should handle analytics method calls', async () => {
+  it("should handle analytics method calls", async () => {
     render(
       <MentiqAnalyticsProvider config={defaultConfig}>
         <TestComponent />
@@ -101,28 +109,28 @@ describe('MentiqAnalyticsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Track Event')).toBeInTheDocument();
+      expect(screen.getByText("Track Event")).toBeInTheDocument();
     });
 
     // Test track event
-    fireEvent.click(screen.getByText('Track Event'));
+    fireEvent.click(screen.getByText("Track Event"));
     // Note: In the actual implementation, we'd verify the mock was called
-    
+
     // Test page tracking
-    fireEvent.click(screen.getByText('Track Page'));
-    
+    fireEvent.click(screen.getByText("Track Page"));
+
     // Test identify
-    fireEvent.click(screen.getByText('Identify User'));
+    fireEvent.click(screen.getByText("Identify User"));
   });
 
-  it('should render fallback on error', async () => {
+  it("should render fallback on error", async () => {
     // Mock import failure
-    jest.doMock('../analytics', () => {
-      throw new Error('Failed to load analytics');
+    jest.doMock("../analytics", () => {
+      throw new Error("Failed to load analytics");
     });
 
     render(
-      <MentiqAnalyticsProvider 
+      <MentiqAnalyticsProvider
         config={defaultConfig}
         fallback={<div>Analytics unavailable</div>}
       >
@@ -131,11 +139,11 @@ describe('MentiqAnalyticsProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Analytics unavailable')).toBeInTheDocument();
+      expect(screen.getByText("Analytics unavailable")).toBeInTheDocument();
     });
   });
 
-  it('should handle SSR gracefully', () => {
+  it("should handle SSR gracefully", () => {
     // Mock server environment
     const originalWindow = global.window;
     delete (global as any).window;
@@ -146,39 +154,41 @@ describe('MentiqAnalyticsProvider', () => {
       </MentiqAnalyticsProvider>
     );
 
-    expect(screen.getByText('Server rendered content')).toBeInTheDocument();
+    expect(screen.getByText("Server rendered content")).toBeInTheDocument();
 
     // Restore window
     global.window = originalWindow;
   });
 });
 
-describe('useMentiqAnalytics hook', () => {
+describe("useMentiqAnalytics hook", () => {
   const defaultConfig = {
-    apiKey: 'test-api-key',
-    projectId: 'test-project',
+    apiKey: "test-api-key",
+    projectId: "test-project",
   };
 
-  it('should throw error when used outside provider', () => {
+  it("should throw error when used outside provider", () => {
     function TestComponentWithoutProvider() {
       useMentiqAnalytics();
       return <div>Test</div>;
     }
 
     // Suppress console.error for this test
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation();
 
     expect(() => {
       render(<TestComponentWithoutProvider />);
-    }).toThrow('useMentiqAnalytics must be used within a MentiqAnalyticsProvider');
+    }).toThrow(
+      "useMentiqAnalytics must be used within a MentiqAnalyticsProvider"
+    );
 
     consoleSpy.mockRestore();
   });
 
-  it('should provide all analytics methods', async () => {
+  it("should provide all analytics methods", async () => {
     function TestHookComponent() {
       const analytics = useMentiqAnalytics();
-      
+
       return (
         <div>
           <div data-testid="has-track">{typeof analytics.track}</div>
@@ -198,12 +208,12 @@ describe('useMentiqAnalytics hook', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('has-track')).toHaveTextContent('function');
-      expect(screen.getByTestId('has-page')).toHaveTextContent('function');
-      expect(screen.getByTestId('has-identify')).toHaveTextContent('function');
-      expect(screen.getByTestId('has-reset')).toHaveTextContent('function');
-      expect(screen.getByTestId('has-flush')).toHaveTextContent('function');
-      expect(screen.getByTestId('has-analytics')).toHaveTextContent('object');
+      expect(screen.getByTestId("has-track")).toHaveTextContent("function");
+      expect(screen.getByTestId("has-page")).toHaveTextContent("function");
+      expect(screen.getByTestId("has-identify")).toHaveTextContent("function");
+      expect(screen.getByTestId("has-reset")).toHaveTextContent("function");
+      expect(screen.getByTestId("has-flush")).toHaveTextContent("function");
+      expect(screen.getByTestId("has-analytics")).toHaveTextContent("object");
     });
   });
 });

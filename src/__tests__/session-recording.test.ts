@@ -10,14 +10,14 @@ describe("SessionRecorder", () => {
   const config: AnalyticsConfig = {
     apiKey: "test-api-key",
     projectId: "test-project-id",
-    endpoint: "https://api.test.com",
+    endpoint: "http://localhost:8080",
     debug: false, // Set to false to avoid console spam
   };
   const sessionId = "test-session-123";
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -67,30 +67,34 @@ describe("SessionRecorder", () => {
         blockClass: "custom-block",
         maskAllInputs: false,
       };
-      const customRecorder = new SessionRecorder(config, sessionId, customConfig);
+      const customRecorder = new SessionRecorder(
+        config,
+        sessionId,
+        customConfig
+      );
       expect(customRecorder).toBeInstanceOf(SessionRecorder);
     });
   });
 
   describe("basic controls", () => {
     it("should have start method", () => {
-      expect(typeof recorder.start).toBe('function');
+      expect(typeof recorder.start).toBe("function");
     });
 
     it("should have stop method", () => {
-      expect(typeof recorder.stop).toBe('function');
+      expect(typeof recorder.stop).toBe("function");
     });
 
     it("should have pause method", () => {
-      expect(typeof recorder.pause).toBe('function');
+      expect(typeof recorder.pause).toBe("function");
     });
 
     it("should have resume method", () => {
-      expect(typeof recorder.resume).toBe('function');
+      expect(typeof recorder.resume).toBe("function");
     });
 
     it("should have isActive method", () => {
-      expect(typeof recorder.isActive).toBe('function');
+      expect(typeof recorder.isActive).toBe("function");
     });
 
     it("should handle stop when not recording", () => {
@@ -114,7 +118,7 @@ describe("SessionRecorder", () => {
       const customRecorder = new SessionRecorder(config, sessionId, {
         blockClass: "custom-block",
       });
-      
+
       expect(customRecorder).toBeInstanceOf(SessionRecorder);
     });
 
@@ -123,10 +127,10 @@ describe("SessionRecorder", () => {
         sampling: {
           mousemove: 100,
           scroll: 200,
-          input: 'last',
+          input: "last",
         },
       });
-      
+
       expect(customRecorder).toBeInstanceOf(SessionRecorder);
     });
 
@@ -134,7 +138,7 @@ describe("SessionRecorder", () => {
       const customRecorder = new SessionRecorder(config, sessionId, {
         maxDuration: 1000,
       });
-      
+
       expect(customRecorder).toBeInstanceOf(SessionRecorder);
     });
   });
@@ -163,19 +167,21 @@ describe("SessionRecorder", () => {
     it("should use correct API endpoint format", () => {
       // The endpoint should be /api/v1/sessions/:session_id/recordings
       const expectedEndpoint = `${config.endpoint}/api/v1/sessions/${sessionId}/recordings`;
-      expect(expectedEndpoint).toBe("https://api.test.com/api/v1/sessions/test-session-123/recordings");
+      expect(expectedEndpoint).toBe(
+        "https://api.test.com/api/v1/sessions/test-session-123/recordings"
+      );
     });
 
     it("should use correct authentication headers", () => {
       // Headers should include ApiKey and X-Project-ID
       const expectedHeaders = {
-        'Content-Type': 'application/json',
-        'Authorization': `ApiKey ${config.apiKey}`,
-        'X-Project-ID': config.projectId,
+        "Content-Type": "application/json",
+        Authorization: `ApiKey ${config.apiKey}`,
+        "X-Project-ID": config.projectId,
       };
-      
+
       expect(expectedHeaders.Authorization).toBe("ApiKey test-api-key");
-      expect(expectedHeaders['X-Project-ID']).toBe("test-project-id");
+      expect(expectedHeaders["X-Project-ID"]).toBe("test-project-id");
     });
   });
 
