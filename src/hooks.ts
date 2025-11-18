@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useCallback } from "react";
-import { AnalyticsContext } from "./provider";
+import { MentiqAnalyticsContext } from "./dynamic-provider";
 import {
   EventProperties,
   UserProperties,
@@ -7,11 +7,13 @@ import {
   SessionData,
 } from "./types";
 
-export function useAnalytics() {
-  const analytics = useContext(AnalyticsContext);
+export function useMentiqAnalytics() {
+  const analytics = useContext(MentiqAnalyticsContext);
 
   if (!analytics) {
-    throw new Error("useAnalytics must be used within an AnalyticsProvider");
+    throw new Error(
+      "useMentiqAnalytics must be used within a MentiqAnalyticsProvider"
+    );
   }
 
   const track = useCallback(
@@ -88,7 +90,7 @@ export function useAnalytics() {
 }
 
 export function usePageTracking(properties?: EventProperties) {
-  const { page } = useAnalytics();
+  const { page } = useMentiqAnalytics();
 
   useEffect(() => {
     page(properties);
@@ -96,7 +98,7 @@ export function usePageTracking(properties?: EventProperties) {
 }
 
 export function useInteractionTracking() {
-  const { track } = useAnalytics();
+  const { track } = useMentiqAnalytics();
 
   const trackClick = useCallback(
     (element: string, properties?: EventProperties) => {
@@ -136,7 +138,7 @@ export function useElementTracking(
     once?: boolean;
   } = {}
 ) {
-  const { track } = useAnalytics();
+  const { track } = useMentiqAnalytics();
   const { threshold = 0.5, delay = 1000, once = true } = options;
   const hasTriggered = useRef(false);
 
@@ -171,7 +173,7 @@ export function useElementTracking(
 }
 
 export function useSessionTracking() {
-  const { getSessionData, analytics } = useAnalytics();
+  const { getSessionData, analytics } = useMentiqAnalytics();
 
   const sessionData = getSessionData();
 
@@ -187,7 +189,7 @@ export function useSessionTracking() {
 }
 
 export function useErrorTracking() {
-  const { trackError } = useAnalytics();
+  const { trackError } = useMentiqAnalytics();
 
   const trackJavaScriptError = useCallback(
     (error: Error, properties?: EventProperties) => {
@@ -240,7 +242,7 @@ export function useErrorTracking() {
 }
 
 export function usePerformanceTracking() {
-  const { trackPerformance } = useAnalytics();
+  const { trackPerformance } = useMentiqAnalytics();
 
   useEffect(() => {
     if (typeof window === "undefined" || !("performance" in window)) return;
@@ -344,3 +346,6 @@ export function usePerformanceTracking() {
     measureCustomPerformance,
   };
 }
+
+// Backward compatibility alias
+export const useAnalytics = useMentiqAnalytics;

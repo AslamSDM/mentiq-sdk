@@ -5,18 +5,19 @@ export * from "./utils";
 export { SessionRecorder } from "./session-recording";
 export type { RecordingConfig } from "./session-recording";
 
-// React
-export { AnalyticsProvider } from "./provider";
+// React Provider (Dynamic Loading for SSR & Performance)
+export {
+  MentiqAnalyticsProvider,
+  withMentiqAnalytics,
+  useMentiqAnalytics,
+} from "./dynamic-provider";
+
+// React Hooks & Components
 export * from "./hooks";
 export * from "./components";
 
 // A/B Testing
-// export { ABTestingService } from "./ab-testing";
 export * from "./hooks-ab-testing";
-// export * from "./components-ab-testing";
-
-// Next.js
-export * from "./nextjs";
 
 // Default instance for quick setup
 import { Analytics } from "./analytics";

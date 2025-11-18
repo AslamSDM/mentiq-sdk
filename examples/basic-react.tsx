@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import {
-  AnalyticsProvider,
-  useAnalytics,
+  MentiqAnalyticsProvider,
+  useMentiqAnalytics,
   TrackClick,
   TrackView,
 } from "mentiq-sdk";
@@ -9,21 +9,22 @@ import {
 // Main App Component
 function App() {
   return (
-    <AnalyticsProvider
+    <MentiqAnalyticsProvider
       config={{
         apiKey: "your-api-key-here",
         debug: true,
         enableAutoPageTracking: true,
       }}
+      loading={<div>Loading analytics...</div>}
     >
       <Dashboard />
-    </AnalyticsProvider>
+    </MentiqAnalyticsProvider>
   );
 }
 
 // Dashboard Component
 function Dashboard() {
-  const { track, identify } = useAnalytics();
+  const { track, identify } = useMentiqAnalytics();
   const [user, setUser] = useState<string | null>(null);
 
   const handleLogin = () => {
@@ -203,7 +204,7 @@ function Dashboard() {
 
 // Newsletter Form Component with Analytics
 function NewsletterForm() {
-  const { track } = useAnalytics();
+  const { track } = useMentiqAnalytics();
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
 

@@ -5,10 +5,10 @@ This directory contains example implementations of the MentiQ Analytics SDK.
 ## Files
 
 - `basic-react.tsx` - Basic React app integration
-- `nextjs-app-router.tsx` - Next.js App Router integration
-- `nextjs-pages-router.tsx` - Next.js Pages Router integration
-- `advanced-tracking.tsx` - Advanced tracking patterns
-- `ecommerce-example.tsx` - E-commerce tracking example
+- `backend-integration.tsx` - Backend integration examples
+- `nextjs-backend-integration.tsx` - Next.js backend integration
+- `session-recording-examples.md` - Session recording implementation guide
+- Advanced tracking patterns and e-commerce examples
 
 ## Running Examples
 
