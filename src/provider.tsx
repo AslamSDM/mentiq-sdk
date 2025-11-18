@@ -1,3 +1,4 @@
+"use client";
 import React, { createContext, useEffect, ReactNode } from "react";
 import { Analytics } from "./analytics";
 import { AnalyticsConfig, AnalyticsInstance } from "./types";

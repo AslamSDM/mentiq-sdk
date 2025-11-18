@@ -2,7 +2,8 @@ import React, { ReactNode, ComponentType, createContext } from "react";
 import { AnalyticsConfig, AnalyticsInstance } from "./types";
 
 // Analytics Context for hooks - only create on client side
-let MentiqAnalyticsContext: React.Context<AnalyticsInstance | null> | null = null;
+let MentiqAnalyticsContext: React.Context<AnalyticsInstance | null> | null =
+  null;
 
 function getContext() {
   if (typeof window !== "undefined" && !MentiqAnalyticsContext) {
@@ -73,9 +74,7 @@ export function MentiqAnalyticsProvider({
           }
 
           return (
-            <Context.Provider value={analytics}>
-              {children}
-            </Context.Provider>
+            <Context.Provider value={analytics}>{children}</Context.Provider>
           );
         };
 
@@ -138,15 +137,19 @@ export function withMentiqAnalytics<P extends object>(
  */
 export function useMentiqAnalytics() {
   const Context = getContext();
-  
+
   if (!Context) {
-    throw new Error("useMentiqAnalytics must be used within a MentiqAnalyticsProvider and on the client side");
+    throw new Error(
+      "useMentiqAnalytics must be used within a MentiqAnalyticsProvider and on the client side"
+    );
   }
 
   const analytics = React.useContext(Context);
 
   if (!analytics) {
-    throw new Error("useMentiqAnalytics must be used within a MentiqAnalyticsProvider");
+    throw new Error(
+      "useMentiqAnalytics must be used within a MentiqAnalyticsProvider"
+    );
   }
 
   const track = React.useCallback(
@@ -178,12 +181,20 @@ export function useMentiqAnalytics() {
     await analytics.flush();
   }, [analytics]);
 
+  const trackCustomError = React.useCallback(
+    (error: string | Error, properties?: any) => {
+      analytics.trackCustomError(error, properties);
+    },
+    [analytics]
+  );
+
   return {
     track,
     page,
     identify,
     reset,
     flush,
+    trackCustomError,
     analytics,
   };
 }

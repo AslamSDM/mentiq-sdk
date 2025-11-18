@@ -5,6 +5,7 @@ import {
   useErrorTracking,
   usePerformanceTracking,
 } from "./hooks";
+import { useMentiqAnalytics } from "./dynamic-provider";
 import { EventProperties } from "./types";
 
 interface TrackViewProps {
@@ -248,13 +249,48 @@ interface ErrorBoundaryState {
   error?: Error;
 }
 
-export class AnalyticsErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
+export function AnalyticsErrorBoundary({
+  children,
+  fallback,
+  onError,
+}: ErrorBoundaryProps) {
+  const { trackCustomError } = useMentiqAnalytics();
+
+  return (
+    <ErrorBoundaryWrapper
+      onError={(error, errorInfo) => {
+        // Track the error
+        trackCustomError(error, {
+          component_stack: errorInfo.componentStack,
+          error_boundary: true,
+        });
+
+        // Call custom error handler
+        if (onError) {
+          onError(error, errorInfo);
+        }
+      }}
+      fallback={fallback}
+    >
+      {children}
+    </ErrorBoundaryWrapper>
+  );
+}
+
+// Internal class component for error boundary functionality
+class ErrorBoundaryWrapper extends React.Component<
+  {
+    children: ReactNode;
+    fallback?: ReactNode;
+    onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  },
   ErrorBoundaryState
 > {
-  private analytics: ReturnType<typeof useAnalytics> | null = null;
-
-  constructor(props: ErrorBoundaryProps) {
+  constructor(props: {
+    children: ReactNode;
+    fallback?: ReactNode;
+    onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
+  }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -264,15 +300,7 @@ export class AnalyticsErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Track the error
-    if (this.analytics) {
-      this.analytics.trackError(error, {
-        component_stack: errorInfo.componentStack,
-        error_boundary: true,
-      });
-    }
-
-    // Call custom error handler
+    // Call the error handler passed from the functional component
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }

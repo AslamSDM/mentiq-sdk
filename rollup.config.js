@@ -23,7 +23,10 @@ module.exports = [
       },
     ],
     plugins: [
-      resolve(),
+      resolve({
+        // Don't bundle node_modules
+        preferBuiltins: false,
+      }),
       commonjs(),
       typescript({
         tsconfig: "./tsconfig.json",
@@ -31,7 +34,13 @@ module.exports = [
         declarationDir: "./dist/types",
       }),
     ],
-    external: ["react", "react-dom", "rrweb"],
+    external: [
+      "react",
+      "react-dom",
+      "rrweb",
+      "rrweb-snapshot",
+      /node_modules/, // Don't bundle any node_modules
+    ],
   },
   {
     input: "dist/types/index.d.ts",

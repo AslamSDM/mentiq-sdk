@@ -172,6 +172,7 @@ export interface HeatmapData {
 }
 
 export interface SessionData {
+  sessionId?: string;
   startTime: number;
   endTime?: number;
   duration?: number;

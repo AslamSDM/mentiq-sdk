@@ -64,7 +64,7 @@ export function useElementTracking(
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     const element = elementRef.current;
     if (!element) return;
 
@@ -119,10 +119,10 @@ export function useErrorTracking() {
 
   const trackJavaScriptError = useCallback(
     (error: Error, properties?: EventProperties) => {
-      track("javascript_error", { 
+      track("javascript_error", {
         message: error.message,
         stack: error.stack,
-        ...properties 
+        ...properties,
       });
     },
     [track]
@@ -158,7 +158,10 @@ export function useErrorTracking() {
 
     return () => {
       window.removeEventListener("error", handleError);
-      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection
+      );
     };
   }, [trackJavaScriptError, trackCustomError]);
 
@@ -175,7 +178,9 @@ export function usePerformanceTracking() {
     if (typeof window === "undefined" || !("performance" in window)) return;
 
     const measurePerformance = () => {
-      const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
+      const navigation = performance.getEntriesByType(
+        "navigation"
+      )[0] as PerformanceNavigationTiming;
       const paint = performance.getEntriesByType("paint");
 
       if (navigation) {
@@ -183,7 +188,9 @@ export function usePerformanceTracking() {
           loadTime: navigation.loadEventEnd - navigation.fetchStart,
           domReady: navigation.domContentLoadedEventEnd - navigation.fetchStart,
           firstPaint: paint.find((p) => p.name === "first-paint")?.startTime,
-          firstContentfulPaint: paint.find((p) => p.name === "first-contentful-paint")?.startTime,
+          firstContentfulPaint: paint.find(
+            (p) => p.name === "first-contentful-paint"
+          )?.startTime,
         };
 
         track("performance_metrics", performanceData);
@@ -229,5 +236,5 @@ export function usePerformanceTracking() {
 // Re-export for convenience
 export { useMentiqAnalytics };
 
-// Backward compatibility alias  
+// Backward compatibility alias
 export const useAnalytics = useMentiqAnalytics;
