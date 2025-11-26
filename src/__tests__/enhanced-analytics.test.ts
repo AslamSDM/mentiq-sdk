@@ -219,7 +219,7 @@ describe("Enhanced Session Analytics", () => {
       (analytics as any).sessionData.scrollDepth = 75;
       (analytics as any).sessionData.pageViews = 3;
       (analytics as any).sessionData.scrollEvents = 8;
-      
+
       // Mock 2 minutes duration
       (analytics as any).sessionData.startTime = Date.now() - 2 * 60 * 1000;
 

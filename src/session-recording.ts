@@ -209,10 +209,11 @@ export class SessionRecorder {
         this.config.endpoint || "https://api.mentiq.io"
       }/api/v1/sessions/${this.sessionId}/recordings`;
 
-      // Calculate duration in milliseconds
-      const duration = this.recordingStartTime
+      // Calculate duration in seconds (backend expects seconds)
+      const durationMs = this.recordingStartTime
         ? Date.now() - this.recordingStartTime
         : 0;
+      const duration = Math.floor(durationMs / 1000);
 
       // Get start URL (current or initial page)
       const startUrl =

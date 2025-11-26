@@ -58,17 +58,17 @@ describe("Analytics Integration", () => {
 
   it("should handle funnel tracking", () => {
     analytics.startFunnel("signup_funnel");
-    
+
     const initialState = analytics.getFunnelState("signup_funnel");
     expect(initialState).toBeDefined();
     expect(initialState.isActive).toBe(true);
-    
+
     analytics.advanceFunnel("signup_funnel", "email_entered");
     analytics.advanceFunnel("signup_funnel", "password_entered");
-    
+
     const beforeComplete = analytics.getFunnelState("signup_funnel");
     expect(beforeComplete.currentStep).toBe(2);
-    
+
     analytics.completeFunnel("signup_funnel");
 
     // After completion, funnel state should be cleared

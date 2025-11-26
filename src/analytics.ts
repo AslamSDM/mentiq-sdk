@@ -21,6 +21,9 @@ import {
   setUserId,
   clearUserId,
   debounce,
+  detectChannel,
+  getChannelFromUrl,
+  getUserEmail,
 } from "./utils";
 import { SessionRecorder } from "./session-recording";
 
@@ -78,6 +81,7 @@ export class Analytics implements AnalyticsInstance {
   }
 
   private initializeSession(): SessionData {
+    const channel = typeof window !== "undefined" ? detectChannel() : "direct";
     return {
       startTime: Date.now(),
       pageViews: 0,
@@ -91,6 +95,7 @@ export class Analytics implements AnalyticsInstance {
       pageChanges: 0,
       engagementScore: 0,
       bounceLikelihood: 0,
+      channel: channel,
     };
   }
 
@@ -100,6 +105,25 @@ export class Analytics implements AnalyticsInstance {
     // Set initial user ID if provided
     if (this.config.userId) {
       setUserId(this.config.userId);
+    }
+
+    // Auto-detect email from auth session if available
+    if (typeof window !== "undefined") {
+      const detectedEmail = getUserEmail();
+      if (detectedEmail && !localStorage.getItem("mentiq_user_email")) {
+        // Store detected email for future use
+        try {
+          localStorage.setItem("mentiq_user_email", detectedEmail);
+          if (this.config.debug) {
+            console.log(
+              "MentiQ: Auto-detected user email from auth session:",
+              detectedEmail
+            );
+          }
+        } catch (e) {
+          console.warn("Failed to store auto-detected email", e);
+        }
+      }
     }
 
     // Add default provider
@@ -431,8 +455,21 @@ export class Analytics implements AnalyticsInstance {
     this.sessionData.pageChanges = (this.sessionData.pageChanges || 0) + 1;
   }
 
-  public identify(userId: string, traits?: UserProperties): void {
+  public identify(
+    userId: string,
+    traits?: UserProperties & { email?: string }
+  ): void {
     setUserId(userId);
+
+    // Store email if provided
+    if (traits?.email && typeof window !== "undefined") {
+      try {
+        localStorage.setItem("mentiq_user_email", traits.email);
+      } catch (e) {
+        console.warn("Failed to store user email", e);
+      }
+    }
+
     const analyticsEvent = createEvent("identify", undefined, traits);
     this.enqueueEvent(analyticsEvent);
   }

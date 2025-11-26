@@ -187,6 +187,7 @@ export interface SessionData {
   pageChanges?: number;
   engagementScore?: number;
   bounceLikelihood?: number;
+  channel?: string;
 }
 
 export interface FunnelStep {
