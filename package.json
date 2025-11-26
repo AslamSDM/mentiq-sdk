@@ -1,6 +1,6 @@
 {
   "name": "mentiq-sdk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A powerful analytics SDK for React and Next.js with heatmap tracking, session monitoring, and performance analytics",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
