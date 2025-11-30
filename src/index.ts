@@ -19,6 +19,10 @@ export * from "./components";
 // A/B Testing
 export * from "./hooks-ab-testing";
 
+// Onboarding Tracking
+export { OnboardingTracker, useOnboardingTracker } from "./onboarding-tracker";
+export type { OnboardingStep, OnboardingConfig } from "./onboarding-tracker";
+
 // Default instance for quick setup
 import { Analytics } from "./analytics";
 import { AnalyticsConfig } from "./types";

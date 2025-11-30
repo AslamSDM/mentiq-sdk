@@ -5,6 +5,7 @@ A powerful, lightweight analytics SDK for React and Next.js applications with ad
 ## 🌟 Features
 
 ### Core Analytics
+
 - 🎯 Event tracking with custom properties
 - 📄 Page view tracking with auto-tracking
 - 👤 User identification and management
@@ -12,15 +13,18 @@ A powerful, lightweight analytics SDK for React and Next.js applications with ad
 - 📱 Session management and monitoring
 
 ### Advanced Features
+
 - 🔥 **Heatmap Tracking**: Click, hover, and scroll tracking
 - 📊 **Session Monitoring**: User activity, scroll depth, engagement metrics
 - 🎥 **Session Recording**: Replay user sessions with rrweb
 - ⚡ **Performance Tracking**: Core Web Vitals, custom performance metrics
 - 🚨 **Error Tracking**: JavaScript errors, unhandled rejections, React errors
+- 🎯 **Onboarding Tracking**: Track user activation funnels and measure completion rates
 - 🎭 **React Components**: Pre-built tracking components and HOCs
 - 🧪 **A/B Testing**: Experiment management and variant tracking
 
 ### Technical Features
+
 - 📦 Event queuing with configurable batch sizes
 - 🔄 Automatic retry with exponential backoff
 - 🏪 Local storage for offline support
@@ -41,16 +45,16 @@ yarn add mentiq-sdk
 ### Basic Setup
 
 ```tsx
-import React from 'react';
-import { AnalyticsProvider } from 'mentiq-sdk';
+import React from "react";
+import { AnalyticsProvider } from "mentiq-sdk";
 
 function App() {
   return (
-    <AnalyticsProvider 
+    <AnalyticsProvider
       config={{
-        apiKey: 'your-api-key', // Your Mentiq API Key
-        projectId: 'your-project-id', // Your Mentiq Project ID
-        endpoint: 'https://your-endpoint.com/events',
+        apiKey: "your-api-key", // Your Mentiq API Key
+        projectId: "your-project-id", // Your Mentiq Project ID
+        endpoint: "https://your-endpoint.com/events",
         enableHeatmapTracking: true,
         enableSessionRecording: true,
         enableErrorTracking: true,
@@ -67,17 +71,17 @@ function App() {
 ### Using Hooks
 
 ```tsx
-import React from 'react';
-import { useAnalytics, useSessionTracking } from 'mentiq-sdk';
+import React from "react";
+import { useAnalytics, useSessionTracking } from "mentiq-sdk";
 
 function MyComponent() {
   const { track, trackError } = useAnalytics();
   const { sessionData } = useSessionTracking();
 
   const handleButtonClick = () => {
-    track('button_clicked', {
-      button_id: 'hero-cta',
-      user_plan: 'premium'
+    track("button_clicked", {
+      button_id: "hero-cta",
+      user_plan: "premium",
     });
   };
 
@@ -99,17 +103,17 @@ interface AnalyticsConfig {
   endpoint?: string;
   debug?: boolean;
   userId?: string;
-  sessionTimeout?: number;           // Default: 30 minutes
-  batchSize?: number;               // Default: 20 events
-  flushInterval?: number;           // Default: 10 seconds
+  sessionTimeout?: number; // Default: 30 minutes
+  batchSize?: number; // Default: 20 events
+  flushInterval?: number; // Default: 10 seconds
   enableAutoPageTracking?: boolean; // Default: true
   enablePerformanceTracking?: boolean;
   enableHeatmapTracking?: boolean;
   enableSessionRecording?: boolean;
   enableErrorTracking?: boolean;
-  maxQueueSize?: number;            // Default: 1000
-  retryAttempts?: number;           // Default: 3
-  retryDelay?: number;              // Default: 1000ms
+  maxQueueSize?: number; // Default: 1000
+  retryAttempts?: number; // Default: 3
+  retryDelay?: number; // Default: 1000ms
 }
 ```
 
@@ -121,20 +125,20 @@ Main hook for tracking events and managing users.
 
 ```tsx
 const {
-  track,                    // Track custom events
-  page,                     // Track page views
-  identify,                 // Identify users
-  reset,                    // Reset analytics state
-  flush,                    // Force flush events
-  trackError,               // Track custom errors
-  trackPerformance,         // Track performance metrics
-  getSessionData,           // Get current session data
-  getQueueSize,             // Get current queue size
-  startRecording,           // Start session recording
-  stopRecording,            // Stop session recording
-  pauseRecording,           // Pause session recording
-  resumeRecording,          // Resume session recording
-  isRecordingActive,        // Check if recording is active
+  track, // Track custom events
+  page, // Track page views
+  identify, // Identify users
+  reset, // Reset analytics state
+  flush, // Force flush events
+  trackError, // Track custom errors
+  trackPerformance, // Track performance metrics
+  getSessionData, // Get current session data
+  getQueueSize, // Get current queue size
+  startRecording, // Start session recording
+  stopRecording, // Stop session recording
+  pauseRecording, // Pause session recording
+  resumeRecording, // Resume session recording
+  isRecordingActive, // Check if recording is active
   trackSubscriptionCancellation, // Track subscription cancellations
 } = useAnalytics();
 ```
@@ -145,13 +149,13 @@ Monitor user session data in real-time.
 
 ```tsx
 const {
-  sessionData,              // Full session object
-  sessionId,               // Current session ID
-  isActive,                // Is session active
-  duration,                // Session duration in ms
-  pageViews,               // Number of page views
-  clicks,                  // Number of clicks
-  scrollDepth,             // Current scroll depth %
+  sessionData, // Full session object
+  sessionId, // Current session ID
+  isActive, // Is session active
+  duration, // Session duration in ms
+  pageViews, // Number of page views
+  clicks, // Number of clicks
+  scrollDepth, // Current scroll depth %
 } = useSessionTracking();
 ```
 
@@ -161,8 +165,8 @@ Automatic and manual error tracking.
 
 ```tsx
 const {
-  trackJavaScriptError,     // Track JS errors
-  trackCustomError,         // Track custom errors
+  trackJavaScriptError, // Track JS errors
+  trackCustomError, // Track custom errors
 } = useErrorTracking();
 ```
 
@@ -181,9 +185,9 @@ const {
 ### TrackView - Element Visibility Tracking
 
 ```tsx
-<TrackView 
-  event="hero_viewed" 
-  properties={{ section: 'homepage' }}
+<TrackView
+  event="hero_viewed"
+  properties={{ section: "homepage" }}
   threshold={0.5}
   delay={1000}
 >
@@ -194,11 +198,7 @@ const {
 ### HeatmapTracker - User Interaction Tracking
 
 ```tsx
-<HeatmapTracker 
-  trackClicks={true}
-  trackHovers={true}
-  element="product-grid"
->
+<HeatmapTracker trackClicks={true} trackHovers={true} element="product-grid">
   <div>All interactions tracked for heatmap</div>
 </HeatmapTracker>
 ```
@@ -206,10 +206,7 @@ const {
 ### PerformanceMonitor - Component Performance
 
 ```tsx
-<PerformanceMonitor 
-  measureRender={true}
-  componentName="ProductList"
->
+<PerformanceMonitor measureRender={true} componentName="ProductList">
   <ProductList products={products} />
 </PerformanceMonitor>
 ```
@@ -225,16 +222,130 @@ const {
 ### TrackForm - Form Analytics
 
 ```tsx
-<TrackForm 
-  formName="contact-form"
-  trackSubmit={true}
-  trackFieldChanges={true}
->
+<TrackForm formName="contact-form" trackSubmit={true} trackFieldChanges={true}>
   <input name="email" type="email" />
   <textarea name="message" />
   <button type="submit">Submit</button>
 </TrackForm>
 ```
+
+## 🎯 Onboarding Tracking
+
+Track user onboarding flows with the `OnboardingTracker` helper. Perfect for measuring funnel completion, identifying dropoff points, and optimizing user activation.
+
+### ⚠️ Important: Not Automatic!
+
+The `OnboardingTracker` is a **helper class** that formats and sends events. You must **manually call** tracker methods when users complete steps.
+
+### Basic Usage
+
+```tsx
+import { useOnboardingTracker, useMentiqAnalytics } from "mentiq-sdk";
+
+function OnboardingFlow() {
+  const analytics = useMentiqAnalytics();
+
+  // Define your onboarding steps
+  const config = {
+    steps: [
+      { name: "account_created", index: 0, required: true },
+      { name: "profile_completed", index: 1, required: true },
+      { name: "preferences_set", index: 2, required: false },
+      { name: "first_action", index: 3, required: true },
+    ],
+  };
+
+  const tracker = useOnboardingTracker(analytics, config);
+
+  // Start onboarding
+  useEffect(() => {
+    tracker?.start({
+      signup_method: "email",
+      source: "landing_page",
+    });
+  }, []);
+
+  // Track step completion
+  const handleProfileComplete = async () => {
+    await saveProfile();
+    tracker?.completeStep("profile_completed", {
+      fields_filled: ["name", "email", "company"],
+    });
+  };
+
+  // Skip optional steps
+  const handleSkip = () => {
+    tracker?.skipStep("preferences_set", "user_choice");
+  };
+
+  // Get progress
+  const progress = tracker?.getProgress();
+  console.log(`${progress?.progressPercent}% complete`);
+
+  return <div>{/* Your onboarding UI */}</div>;
+}
+```
+
+### Onboarding Tracker API
+
+```tsx
+// Start onboarding flow
+tracker.start(properties?: Record<string, any>)
+
+// Complete a step
+tracker.completeStep(stepName: string, properties?: Record<string, any>)
+
+// Skip optional steps
+tracker.skipStep(stepName: string, reason?: string)
+
+// Mark as complete
+tracker.complete(properties?: Record<string, any>)
+
+// Abandon onboarding
+tracker.abandon(reason?: string)
+
+// Get current progress
+const progress = tracker.getProgress()
+// Returns: { currentStep, completedSteps, progressPercent, duration }
+```
+
+### How It Works
+
+1. **You call tracker methods** → Events are sent to backend
+2. **Events stored in database** with metadata (step_index, timing, properties)
+3. **Backend analyzes events** → Calculates funnel statistics
+4. **Dashboard displays analytics** → Completion rates, dropoff points, time metrics
+
+### Events Sent
+
+The tracker automatically sends these events:
+
+- `onboarding_started` - When onboarding begins
+- `onboarding_step_completed` - When each step is completed
+- `onboarding_step_skipped` - When optional steps are skipped
+- `onboarding_completed` - When all required steps are done
+- `onboarding_abandoned` - When user exits early
+
+### Dashboard Analytics
+
+View onboarding metrics in your dashboard:
+
+- **Completion Rate**: % of users who finish onboarding
+- **Step-by-Step Breakdown**: Completion rate for each step
+- **Dropoff Points**: Steps where users abandon most
+- **Average Time**: Time taken per step and total
+- **User Journeys**: Individual user progress tracking
+
+### Examples
+
+See `examples/onboarding-tracking.tsx` for complete examples:
+
+- Basic onboarding flow
+- Multi-step form tracking
+- Product tour / tutorial
+- SaaS onboarding with conditional steps
+- Progress monitor component
+- Vanilla JavaScript (non-React)
 
 ## 🔄 Event Queuing & Batching
 
@@ -255,11 +366,13 @@ await flush(); // Send all events immediately
 ## 🚨 Error Handling
 
 ### Automatic Error Tracking
+
 - JavaScript errors
-- Unhandled Promise rejections  
+- Unhandled Promise rejections
 - React component errors
 
 ### Manual Error Tracking
+
 ```tsx
 const { trackError } = useAnalytics();
 
@@ -267,8 +380,8 @@ try {
   // risky operation
 } catch (error) {
   trackError(error, {
-    context: 'user-action',
-    user_id: userId
+    context: "user-action",
+    user_id: userId,
   });
 }
 ```
@@ -276,17 +389,20 @@ try {
 ## ⚡ Performance Monitoring
 
 ### Core Web Vitals
+
 Automatically tracks when `enablePerformanceTracking: true`:
+
 - **LCP** (Largest Contentful Paint)
 - **FID** (First Input Delay)
 - **CLS** (Cumulative Layout Shift)
 - **FCP** (First Contentful Paint)
 
 ### Custom Performance Metrics
+
 ```tsx
 const { measureCustomPerformance } = usePerformanceTracking();
 
-const measurement = measureCustomPerformance('api-call');
+const measurement = measureCustomPerformance("api-call");
 measurement.start();
 await fetchData();
 measurement.end(); // Automatically tracked
@@ -305,23 +421,23 @@ npm install rrweb
 ### Basic Usage
 
 ```tsx
-import { AnalyticsProvider } from 'mentiq-sdk';
+import { AnalyticsProvider } from "mentiq-sdk";
 
-<AnalyticsProvider 
+<AnalyticsProvider
   config={{
-    apiKey: 'your-api-key',
-    projectId: 'your-project-id',
+    apiKey: "your-api-key",
+    projectId: "your-project-id",
     enableSessionRecording: true, // Enable automatic recording
   }}
 >
   <App />
-</AnalyticsProvider>
+</AnalyticsProvider>;
 ```
 
 ### Manual Control
 
 ```tsx
-import { useAnalytics } from 'mentiq-sdk';
+import { useAnalytics } from "mentiq-sdk";
 
 function RecordingControls() {
   const analytics = useAnalytics();
@@ -331,18 +447,10 @@ function RecordingControls() {
       <button onClick={() => analytics.startRecording()}>
         Start Recording
       </button>
-      <button onClick={() => analytics.stopRecording()}>
-        Stop Recording
-      </button>
-      <button onClick={() => analytics.pauseRecording()}>
-        Pause
-      </button>
-      <button onClick={() => analytics.resumeRecording()}>
-        Resume
-      </button>
-      {analytics.isRecordingActive() && (
-        <span>🔴 Recording Active</span>
-      )}
+      <button onClick={() => analytics.stopRecording()}>Stop Recording</button>
+      <button onClick={() => analytics.pauseRecording()}>Pause</button>
+      <button onClick={() => analytics.resumeRecording()}>Resume</button>
+      {analytics.isRecordingActive() && <span>🔴 Recording Active</span>}
     </div>
   );
 }
@@ -352,8 +460,8 @@ function RecordingControls() {
 
 ```tsx
 // Add CSS classes to protect sensitive data
-<input 
-  type="password" 
+<input
+  type="password"
   className="mentiq-block" // Completely block from recording
 />
 
@@ -369,19 +477,19 @@ function RecordingControls() {
 ### Custom Configuration
 
 ```tsx
-import { SessionRecorder } from 'mentiq-sdk';
+import { SessionRecorder } from "mentiq-sdk";
 
 const recorder = new SessionRecorder(
   analytics.config,
   analytics.getSessionId(),
   {
     maxDuration: 10 * 60 * 1000, // 10 minutes
-    blockClass: 'sensitive',
+    blockClass: "sensitive",
     maskAllInputs: true,
     sampling: {
-      mousemove: 50,    // Sample every 50ms
-      scroll: 150,       // Sample every 150ms
-      input: 'last',     // Only record final value
+      mousemove: 50, // Sample every 50ms
+      scroll: 150, // Sample every 150ms
+      input: "last", // Only record final value
     },
   }
 );
@@ -392,6 +500,7 @@ const recorder = new SessionRecorder(
 ## 📱 Session Management
 
 Rich session tracking includes:
+
 - Session duration and activity
 - Page views and navigation
 - User interactions (clicks, scrolls)
@@ -401,15 +510,16 @@ Rich session tracking includes:
 ## 🚀 Next.js Integration
 
 ### App Router (app/)
+
 ```tsx
 // app/layout.tsx
-import { AnalyticsProvider } from 'mentiq-sdk';
+import { AnalyticsProvider } from "mentiq-sdk";
 
 export default function RootLayout({ children }) {
   return (
     <html>
       <body>
-        <AnalyticsProvider config={{ apiKey: 'your-key' }}>
+        <AnalyticsProvider config={{ apiKey: "your-key" }}>
           {children}
         </AnalyticsProvider>
       </body>
@@ -419,13 +529,14 @@ export default function RootLayout({ children }) {
 ```
 
 ### Pages Router (pages/)
+
 ```tsx
 // pages/_app.tsx
-import { AnalyticsProvider } from 'mentiq-sdk';
+import { AnalyticsProvider } from "mentiq-sdk";
 
 export default function App({ Component, pageProps }) {
   return (
-    <AnalyticsProvider config={{ apiKey: 'your-key' }}>
+    <AnalyticsProvider config={{ apiKey: "your-key" }}>
       <Component {...pageProps} />
     </AnalyticsProvider>
   );
@@ -435,25 +546,23 @@ export default function App({ Component, pageProps }) {
 ## 📊 Example Use Cases
 
 ### E-commerce Tracking
+
 ```tsx
 function ProductPage({ product }) {
   const { track } = useAnalytics();
 
   return (
-    <TrackView 
+    <TrackView
       event="product_viewed"
-      properties={{ 
+      properties={{
         product_id: product.id,
         category: product.category,
-        price: product.price
+        price: product.price,
       }}
     >
       <ProductDetails product={product} />
-      
-      <TrackClick
-        event="add_to_cart"
-        properties={{ product_id: product.id }}
-      >
+
+      <TrackClick event="add_to_cart" properties={{ product_id: product.id }}>
         <button>Add to Cart</button>
       </TrackClick>
     </TrackView>
@@ -462,6 +571,7 @@ function ProductPage({ product }) {
 ```
 
 ### Content Engagement
+
 ```tsx
 function BlogPost({ post }) {
   return (
@@ -482,22 +592,23 @@ function BlogPost({ post }) {
 Full TypeScript support with comprehensive types:
 
 ```tsx
-import type { 
+import type {
   AnalyticsConfig,
   EventProperties,
   SessionData,
-  PerformanceData 
-} from 'mentiq-sdk';
+  PerformanceData,
+} from "mentiq-sdk";
 
 const config: AnalyticsConfig = {
-  apiKey: 'key',
-  enableHeatmapTracking: true
+  apiKey: "key",
+  enableHeatmapTracking: true,
 };
 ```
 
 ## 📋 API Reference
 
 ### Analytics Class Methods
+
 ```tsx
 // Core tracking
 analytics.track(event: string, properties?: EventProperties)
@@ -517,12 +628,23 @@ analytics.trackPerformance(data: PerformanceData)
 ## ✅ Quick Start Checklist
 
 ### Basic Setup
+
 - [ ] Install SDK: `npm install mentiq-sdk`
 - [ ] Wrap app with `<AnalyticsProvider>`
 - [ ] Add your API key and project ID
 - [ ] Verify events in your dashboard
 
+### Onboarding Tracking Setup
+
+- [ ] Import `OnboardingTracker` or `useOnboardingTracker`
+- [ ] Define your onboarding steps configuration
+- [ ] Call `tracker.start()` when onboarding begins
+- [ ] Add `tracker.completeStep()` calls at completion points
+- [ ] View funnel analytics in dashboard
+- [ ] See `examples/onboarding-tracking.tsx` for full examples
+
 ### Session Recording Setup
+
 - [ ] Install rrweb: `npm install rrweb`
 - [ ] Enable `enableSessionRecording: true`
 - [ ] Add privacy CSS classes to sensitive elements
@@ -530,6 +652,7 @@ analytics.trackPerformance(data: PerformanceData)
 - [ ] Verify uploads to backend endpoint
 
 ### Privacy & Compliance
+
 - [ ] Add `.mentiq-block` to password inputs
 - [ ] Add `.mentiq-mask` to sensitive text
 - [ ] Add `.mentiq-ignore` to private sections
@@ -537,6 +660,7 @@ analytics.trackPerformance(data: PerformanceData)
 - [ ] Review and test privacy settings
 
 ### Production Optimization
+
 - [ ] Configure appropriate batch sizes
 - [ ] Set reasonable flush intervals
 - [ ] Adjust sampling rates for performance
