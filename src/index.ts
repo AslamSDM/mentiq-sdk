@@ -16,6 +16,10 @@ export {
 export * from "./hooks";
 export * from "./components";
 
+// Subscription Hooks & Components
+export * from "./hooks-subscription";
+export * from "./components-subscription";
+
 // A/B Testing
 export * from "./hooks-ab-testing";
 
@@ -209,4 +213,109 @@ export function calculateEngagementScore(): number {
     return 0;
   }
   return defaultInstance.calculateEngagementScore();
+}
+
+// Subscription tracking methods
+export function trackSubscriptionStarted(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionStarted(properties);
+}
+
+export function trackSubscriptionUpgraded(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionUpgraded(properties);
+}
+
+export function trackSubscriptionDowngraded(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionDowngraded(properties);
+}
+
+export function trackSubscriptionCanceled(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionCanceled(properties);
+}
+
+export function trackSubscriptionPaused(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionPaused(properties);
+}
+
+export function trackSubscriptionReactivated(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackSubscriptionReactivated(properties);
+}
+
+export function trackTrialStarted(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackTrialStarted(properties);
+}
+
+export function trackTrialConverted(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackTrialConverted(properties);
+}
+
+export function trackTrialExpired(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackTrialExpired(properties);
+}
+
+export function trackPaymentFailed(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackPaymentFailed(properties);
+}
+
+export function trackPaymentSucceeded(properties: any): void {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return;
+  }
+  defaultInstance.trackPaymentSucceeded(properties);
+}
+
+export function getSubscriptionData(): any {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return null;
+  }
+  return defaultInstance.getSubscriptionData();
+}
+
+export function calculateChurnRisk(): any {
+  if (!defaultInstance) {
+    console.warn("MentiQ Analytics not initialized. Call init() first.");
+    return null;
+  }
+  return defaultInstance.calculateChurnRisk();
 }

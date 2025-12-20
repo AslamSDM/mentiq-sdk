@@ -44,8 +44,96 @@ export interface PageProperties {
   search?: string;
 }
 
-export interface UserProperties {
+// Subscription tracking types
+export interface SubscriptionProperties {
+  // Status & Plan
+  status:
+    | "active"
+    | "trialing"
+    | "past_due"
+    | "canceled"
+    | "paused"
+    | "incomplete"
+    | "incomplete_expired"
+    | "unpaid";
+  plan_id?: string;
+  plan_name?: string;
+  plan_tier?: string; // e.g., "free", "starter", "pro", "enterprise"
+
+  // Pricing (in cents)
+  mrr?: number; // Monthly Recurring Revenue
+  arr?: number; // Annual Recurring Revenue
+  ltv?: number; // Lifetime Value
+  currency?: string; // e.g., "usd", "eur"
+
+  // Billing Cycle
+  billing_interval?: "day" | "week" | "month" | "year";
+  billing_cycle_anchor?: string; // ISO date
+  current_period_start?: string; // ISO date
+  current_period_end?: string; // ISO date
+
+  // Trial
+  trial_start?: string; // ISO date
+  trial_end?: string; // ISO date
+  is_trial?: boolean;
+
+  // Payment (PCI-safe - last 4 digits only)
+  payment_method_type?: string; // e.g., "card", "bank_account", "paypal"
+  payment_method_last4?: string; // Last 4 digits only
+  payment_method_brand?: string; // e.g., "visa", "mastercard"
+
+  // Cancellation
+  cancel_at_period_end?: boolean;
+  canceled_at?: string; // ISO date
+  cancellation_reason?: string;
+
+  // Provider Info
+  provider?: "stripe" | "paddle" | "chargebee" | "manual" | string;
+  provider_customer_id?: string;
+  provider_subscription_id?: string;
+
+  // Metadata
+  created_at?: string; // ISO date
+  updated_at?: string; // ISO date
+
+  // Custom fields
   [key: string]: string | number | boolean | null | undefined;
+}
+
+export interface PaymentEventProperties extends EventProperties {
+  // Payment-specific event data
+  amount?: number;
+  currency?: string;
+  payment_status?: "succeeded" | "failed" | "pending" | "refunded";
+  failure_reason?: string;
+  invoice_id?: string;
+  charge_id?: string;
+}
+
+export interface ChurnRiskMetrics {
+  risk_score: number; // 0-100
+  risk_category: "low" | "medium" | "high" | "critical";
+  factors: {
+    engagement_score?: number;
+    days_since_last_active?: number;
+    feature_adoption_rate?: number;
+    support_tickets?: number;
+    negative_feedback_count?: number;
+    payment_failures?: number;
+  };
+  predicted_churn_date?: string; // ISO date
+  intervention_recommended?: boolean;
+}
+
+export interface UserProperties {
+  subscription?: SubscriptionProperties;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | SubscriptionProperties;
 }
 
 export interface AnalyticsEvent {
@@ -58,7 +146,9 @@ export interface AnalyticsEvent {
     | "alias"
     | "heatmap"
     | "session"
-    | "error";
+    | "error"
+    | "subscription"
+    | "payment";
   event?: string;
   properties?: EventProperties;
   userId?: string;
@@ -87,7 +177,13 @@ export interface AnalyticsEvent {
 export interface AnalyticsInstance {
   track: (event: string, properties?: EventProperties) => void;
   page: (properties?: PageProperties) => void;
-  identify: (userId: string, traits?: UserProperties) => void;
+  identify: (
+    userId: string,
+    traits?: UserProperties & {
+      email?: string;
+      subscription?: SubscriptionProperties;
+    }
+  ) => void;
   alias: (newId: string, previousId?: string) => void;
   reset: () => void;
   flush: () => Promise<void>;
@@ -133,6 +229,33 @@ export interface AnalyticsInstance {
   pauseRecording: () => void;
   resumeRecording: () => void;
   isRecordingActive: () => boolean;
+
+  // Subscription tracking methods
+  trackSubscription: (
+    eventName: string,
+    properties?: SubscriptionProperties & EventProperties
+  ) => void;
+  trackSubscriptionStarted: (properties: SubscriptionProperties) => void;
+  trackSubscriptionUpgraded: (
+    properties: SubscriptionProperties & { previous_plan?: string }
+  ) => void;
+  trackSubscriptionDowngraded: (
+    properties: SubscriptionProperties & { previous_plan?: string }
+  ) => void;
+  trackSubscriptionCanceled: (
+    properties: SubscriptionProperties & { cancellation_reason?: string }
+  ) => void;
+  trackSubscriptionPaused: (properties: SubscriptionProperties) => void;
+  trackSubscriptionReactivated: (properties: SubscriptionProperties) => void;
+  trackTrialStarted: (properties: SubscriptionProperties) => void;
+  trackTrialConverted: (properties: SubscriptionProperties) => void;
+  trackTrialExpired: (properties: SubscriptionProperties) => void;
+  trackPaymentFailed: (properties: PaymentEventProperties) => void;
+  trackPaymentSucceeded: (properties: PaymentEventProperties) => void;
+
+  // Churn analysis methods
+  calculateChurnRisk: () => ChurnRiskMetrics;
+  getSubscriptionData: () => SubscriptionProperties | null;
   config: {
     apiKey: string;
     projectId: string;
@@ -306,27 +429,4 @@ export interface ABTestContext {
   assignments: Record<string, ExperimentAssignment>; // experimentKey -> assignment
   experiments: Record<string, Experiment>; // experimentKey -> experiment
   lastFetch: number; // timestamp of last fetch
-}
-
-// Extend AnalyticsConfig to include AB testing
-export interface AnalyticsConfig {
-  apiKey: string;
-  projectId: string;
-  endpoint?: string;
-  debug?: boolean;
-  userId?: string;
-  sessionTimeout?: number;
-  batchSize?: number;
-  flushInterval?: number;
-  enableAutoPageTracking?: boolean;
-  enablePerformanceTracking?: boolean;
-  enableHeatmapTracking?: boolean;
-  enableSessionRecording?: boolean;
-  enableErrorTracking?: boolean;
-  maxQueueSize?: number;
-  retryAttempts?: number;
-  retryDelay?: number;
-  // A/B Testing
-  enableABTesting?: boolean;
-  abTestConfig?: ABTestConfig;
 }

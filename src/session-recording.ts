@@ -47,10 +47,13 @@ export class SessionRecorder {
   private recordingConfig: RecordingConfig;
   private stopRecording?: () => void;
   private events: RRWebEvent[] = [];
+  private allEvents: RRWebEvent[] = []; // Keep all events for final upload
+  private uploadedEventCount: number = 0; // Track how many events we've uploaded
   private sessionId: string;
   private isRecording: boolean = false;
   private uploadInterval?: NodeJS.Timeout;
   private recordingStartTime?: number;
+  private firstEventTimestamp?: number; // Track first event for duration calculation
 
   constructor(
     config: AnalyticsConfig,
@@ -105,6 +108,9 @@ export class SessionRecorder {
 
     try {
       this.events = [];
+      this.allEvents = [];
+      this.uploadedEventCount = 0;
+      this.firstEventTimestamp = undefined;
       this.recordingStartTime = Date.now();
       this.isRecording = true;
 
@@ -115,6 +121,12 @@ export class SessionRecorder {
           this.stopRecording = record({
             emit: (event: RRWebEvent) => {
               this.events.push(event);
+              this.allEvents.push(event);
+
+              // Track first event timestamp for accurate duration calculation
+              if (!this.firstEventTimestamp && event.timestamp) {
+                this.firstEventTimestamp = event.timestamp;
+              }
 
               // Check if we've exceeded max duration
               if (
@@ -184,6 +196,7 @@ export class SessionRecorder {
 
       this.isRecording = false;
       this.recordingStartTime = undefined;
+      // Note: Don't clear allEvents here in case upload is async
 
       if (this.config.debug) {
         console.log("Session recording stopped", { sessionId: this.sessionId });
@@ -200,20 +213,22 @@ export class SessionRecorder {
       return;
     }
 
-    // Get events to upload
+    // Get only new events that haven't been uploaded yet
     const eventsToUpload = [...this.events];
-    this.events = [];
 
     try {
       const endpoint = `${
         this.config.endpoint || "https://api.mentiq.io"
       }/api/v1/sessions/${this.sessionId}/recordings`;
 
-      // Calculate duration in seconds (backend expects seconds)
-      const durationMs = this.recordingStartTime
-        ? Date.now() - this.recordingStartTime
-        : 0;
-      const duration = Math.floor(durationMs / 1000);
+      // Calculate duration from actual event timestamps (in milliseconds)
+      let durationMs = 0;
+      if (this.allEvents.length > 0) {
+        const firstTimestamp = this.firstEventTimestamp || this.allEvents[0].timestamp;
+        const lastTimestamp = this.allEvents[this.allEvents.length - 1].timestamp;
+        durationMs = lastTimestamp - firstTimestamp;
+      }
+      const duration = Math.max(1, Math.floor(durationMs / 1000)); // At least 1 second
 
       // Get start URL (current or initial page)
       const startUrl =
@@ -231,28 +246,33 @@ export class SessionRecorder {
           duration: duration,
           start_url: startUrl,
           user_id: this.config.userId || null,
+          is_final: isFinal,
+          event_offset: this.uploadedEventCount, // Tell backend where to append
         }),
       });
 
       if (!response.ok) {
-        // If upload fails, put events back for retry
-        this.events = [...eventsToUpload, ...this.events];
-
+        // If upload fails, keep events for retry
         if (this.config.debug) {
           console.error("Failed to upload recording:", response.statusText);
         }
       } else {
+        // Upload successful - clear the pending events and update counter
+        this.uploadedEventCount += eventsToUpload.length;
+        this.events = [];
+
         if (this.config.debug) {
           console.log("Recording uploaded successfully", {
             eventCount: eventsToUpload.length,
+            totalUploaded: this.uploadedEventCount,
+            totalRecorded: this.allEvents.length,
+            duration: duration,
             isFinal,
           });
         }
       }
     } catch (error) {
-      // If upload fails, put events back for retry
-      this.events = [...eventsToUpload, ...this.events];
-
+      // If upload fails, keep events for retry
       if (this.config.debug) {
         console.error("Error uploading recording:", error);
       }

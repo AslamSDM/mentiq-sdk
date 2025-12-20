@@ -12,6 +12,9 @@ import {
   PerformanceData,
   ErrorData,
   BackendEvent,
+  SubscriptionProperties,
+  PaymentEventProperties,
+  ChurnRiskMetrics,
 } from "./types";
 import {
   createEvent,
@@ -26,6 +29,7 @@ import {
   getUserEmail,
 } from "./utils";
 import { SessionRecorder } from "./session-recording";
+import { autoDetectSubscription } from "./subscription-detection";
 
 export class Analytics implements AnalyticsInstance {
   public config: AnalyticsConfig & {
@@ -164,6 +168,11 @@ export class Analytics implements AnalyticsInstance {
     // Setup session recording
     if (this.config.enableSessionRecording && typeof window !== "undefined") {
       this.setupSessionRecording();
+    }
+
+    // Setup subscription auto-detection
+    if (typeof window !== "undefined") {
+      this.setupSubscriptionAutoDetection();
     }
 
     this.isInitialized = true;
@@ -457,7 +466,10 @@ export class Analytics implements AnalyticsInstance {
 
   public identify(
     userId: string,
-    traits?: UserProperties & { email?: string }
+    traits?: UserProperties & {
+      email?: string;
+      subscription?: SubscriptionProperties;
+    }
   ): void {
     setUserId(userId);
 
@@ -470,8 +482,59 @@ export class Analytics implements AnalyticsInstance {
       }
     }
 
+    // Store and validate subscription data
+    if (traits?.subscription && typeof window !== "undefined") {
+      try {
+        const validatedSubscription = this.validateSubscriptionData(
+          traits.subscription
+        );
+        localStorage.setItem(
+          "mentiq_user_subscription",
+          JSON.stringify(validatedSubscription)
+        );
+        // Update traits with validated subscription
+        traits.subscription = validatedSubscription;
+
+        if (this.config.debug) {
+          console.log("MentiQ: Subscription data stored", validatedSubscription);
+        }
+      } catch (e) {
+        console.warn("Failed to store subscription data", e);
+      }
+    }
+
     const analyticsEvent = createEvent("identify", undefined, traits);
     this.enqueueEvent(analyticsEvent);
+  }
+
+  private validateSubscriptionData(
+    subscription: SubscriptionProperties
+  ): SubscriptionProperties {
+    const validated = { ...subscription };
+
+    // PCI compliance - truncate to last 4 digits only
+    if (validated.payment_method_last4 && validated.payment_method_last4.length > 4) {
+      validated.payment_method_last4 = validated.payment_method_last4.slice(-4);
+      if (this.config.debug) {
+        console.warn(
+          "MentiQ: Truncated payment_method_last4 to last 4 digits for PCI compliance"
+        );
+      }
+    }
+
+    // Remove any card data (PCI compliance)
+    delete (validated as any)["card_number"];
+    delete (validated as any)["cvv"];
+    delete (validated as any)["card_cvv"];
+
+    // Calculate derived fields
+    if (validated.mrr && validated.billing_interval === "year") {
+      validated.arr = validated.mrr * 12;
+    } else if (validated.arr && validated.billing_interval === "month") {
+      validated.mrr = Math.round(validated.arr / 12);
+    }
+
+    return validated;
   }
 
   public alias(newId: string, previousId?: string): void {
@@ -487,6 +550,235 @@ export class Analytics implements AnalyticsInstance {
     this.eventQueue = [];
     if (this.config.debug) {
       console.log("MentiQ Analytics reset");
+    }
+  }
+
+  // Subscription tracking methods
+  public trackSubscription(
+    eventName: string,
+    properties?: SubscriptionProperties & EventProperties
+  ): void {
+    const event = createEvent("subscription", eventName, properties);
+    this.enqueueEvent(event);
+  }
+
+  public trackSubscriptionStarted(properties: SubscriptionProperties): void {
+    this.trackSubscription("subscription_started", properties);
+  }
+
+  public trackSubscriptionUpgraded(
+    properties: SubscriptionProperties & { previous_plan?: string }
+  ): void {
+    this.trackSubscription("subscription_upgraded", properties);
+  }
+
+  public trackSubscriptionDowngraded(
+    properties: SubscriptionProperties & { previous_plan?: string }
+  ): void {
+    this.trackSubscription("subscription_downgraded", properties);
+  }
+
+  public trackSubscriptionCanceled(
+    properties: SubscriptionProperties & { cancellation_reason?: string }
+  ): void {
+    this.trackSubscription("subscription_canceled", properties);
+  }
+
+  public trackSubscriptionPaused(properties: SubscriptionProperties): void {
+    this.trackSubscription("subscription_paused", properties);
+  }
+
+  public trackSubscriptionReactivated(
+    properties: SubscriptionProperties
+  ): void {
+    this.trackSubscription("subscription_reactivated", properties);
+  }
+
+  public trackTrialStarted(properties: SubscriptionProperties): void {
+    this.trackSubscription("trial_started", properties);
+  }
+
+  public trackTrialConverted(properties: SubscriptionProperties): void {
+    this.trackSubscription("trial_converted", properties);
+  }
+
+  public trackTrialExpired(properties: SubscriptionProperties): void {
+    this.trackSubscription("trial_expired", properties);
+  }
+
+  public trackPaymentFailed(properties: PaymentEventProperties): void {
+    const event = createEvent("payment", "payment_failed", properties);
+    this.enqueueEvent(event);
+  }
+
+  public trackPaymentSucceeded(properties: PaymentEventProperties): void {
+    const event = createEvent("payment", "payment_succeeded", properties);
+    this.enqueueEvent(event);
+  }
+
+  public getSubscriptionData(): SubscriptionProperties | null {
+    if (typeof window === "undefined") return null;
+
+    try {
+      const data = localStorage.getItem("mentiq_user_subscription");
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  public calculateChurnRisk(): ChurnRiskMetrics {
+    const factors = {
+      engagement_score: this.calculateEngagementScore(),
+      days_since_last_active: this.calculateDaysSinceLastActive(),
+      feature_adoption_rate: this.calculateFeatureAdoptionRate(),
+      support_tickets: this.getSupportTicketCount(),
+      negative_feedback_count: this.getNegativeFeedbackCount(),
+      payment_failures: this.getPaymentFailureCount(),
+    };
+
+    // Calculate risk score (0-100) based on weighted factors
+    let riskScore = 0;
+
+    // Low engagement increases risk (weight: 30%)
+    if (factors.engagement_score < 20) {
+      riskScore += 30;
+    } else if (factors.engagement_score < 40) {
+      riskScore += 20;
+    } else if (factors.engagement_score < 60) {
+      riskScore += 10;
+    }
+
+    // Inactivity increases risk (weight: 40%)
+    if (factors.days_since_last_active > 30) {
+      riskScore += 40;
+    } else if (factors.days_since_last_active > 14) {
+      riskScore += 25;
+    } else if (factors.days_since_last_active > 7) {
+      riskScore += 15;
+    }
+
+    // Low feature adoption increases risk (weight: 15%)
+    if (factors.feature_adoption_rate < 0.2) {
+      riskScore += 15;
+    } else if (factors.feature_adoption_rate < 0.4) {
+      riskScore += 10;
+    }
+
+    // Support tickets indicate issues (weight: 10%)
+    if (factors.support_tickets > 5) {
+      riskScore += 10;
+    } else if (factors.support_tickets > 2) {
+      riskScore += 5;
+    }
+
+    // Negative feedback is a strong signal (weight: 20%)
+    if (factors.negative_feedback_count > 3) {
+      riskScore += 20;
+    } else if (factors.negative_feedback_count > 0) {
+      riskScore += 10;
+    }
+
+    // Payment failures are critical (weight: 30%)
+    if (factors.payment_failures > 2) {
+      riskScore += 30;
+    } else if (factors.payment_failures > 0) {
+      riskScore += 20;
+    }
+
+    // Normalize to 0-100
+    riskScore = Math.min(riskScore, 100);
+
+    // Determine risk category
+    let riskCategory: "low" | "medium" | "high" | "critical";
+    if (riskScore < 25) {
+      riskCategory = "low";
+    } else if (riskScore < 50) {
+      riskCategory = "medium";
+    } else if (riskScore < 75) {
+      riskCategory = "high";
+    } else {
+      riskCategory = "critical";
+    }
+
+    // Predict churn date if high risk
+    let predictedChurnDate: string | undefined;
+    if (riskScore > 50) {
+      const daysToChurn = Math.max(7, 90 - riskScore);
+      const churnDate = new Date();
+      churnDate.setDate(churnDate.getDate() + daysToChurn);
+      predictedChurnDate = churnDate.toISOString();
+    }
+
+    return {
+      risk_score: riskScore,
+      risk_category: riskCategory,
+      factors,
+      predicted_churn_date: predictedChurnDate,
+      intervention_recommended: riskScore > 60,
+    };
+  }
+
+  private calculateDaysSinceLastActive(): number {
+    if (typeof window === "undefined") return 0;
+
+    try {
+      const lastActivity = localStorage.getItem("mentiq_last_activity");
+      if (!lastActivity) return 0;
+
+      const lastActiveTime = parseInt(lastActivity, 10);
+      const now = Date.now();
+      const daysSince = Math.floor((now - lastActiveTime) / (1000 * 60 * 60 * 24));
+
+      return daysSince;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  private calculateFeatureAdoptionRate(): number {
+    // Calculate feature adoption based on event diversity
+    const sessionData = this.getSessionData();
+    const uniqueEvents = new Set(sessionData.events || []).size;
+    const totalEvents = (sessionData.events || []).length;
+
+    if (totalEvents === 0) return 0;
+
+    // Assume 20 key features in a typical app
+    const adoptionRate = Math.min(uniqueEvents / 20, 1);
+    return adoptionRate;
+  }
+
+  private getSupportTicketCount(): number {
+    if (typeof window === "undefined") return 0;
+
+    try {
+      const errors = localStorage.getItem("mentiq_error_count");
+      return errors ? parseInt(errors, 10) : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  private getNegativeFeedbackCount(): number {
+    if (typeof window === "undefined") return 0;
+
+    try {
+      const feedback = localStorage.getItem("mentiq_negative_feedback_count");
+      return feedback ? parseInt(feedback, 10) : 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  private getPaymentFailureCount(): number {
+    if (typeof window === "undefined") return 0;
+
+    try {
+      const failures = localStorage.getItem("mentiq_payment_failures");
+      return failures ? parseInt(failures, 10) : 0;
+    } catch (e) {
+      return 0;
     }
   }
 
@@ -847,6 +1139,32 @@ export class Analytics implements AnalyticsInstance {
   }
 
   private enqueueEvent(event: AnalyticsEvent): void {
+    // Auto-enrich with subscription data from localStorage
+    if (typeof window !== "undefined") {
+      try {
+        const subscriptionData = localStorage.getItem("mentiq_user_subscription");
+        if (subscriptionData) {
+          const subscription: SubscriptionProperties = JSON.parse(subscriptionData);
+          // Add subscription metadata to all events
+          event.properties = {
+            ...event.properties,
+            subscription_status: subscription.status,
+            subscription_plan: subscription.plan_name || subscription.plan_tier,
+            subscription_mrr: subscription.mrr,
+            subscription_provider: subscription.provider,
+            is_paid_user:
+              subscription.status === "active" ||
+              subscription.status === "trialing",
+          };
+        }
+      } catch (e) {
+        // Silent fail - don't break event tracking
+        if (this.config.debug) {
+          console.warn("Failed to enrich event with subscription data", e);
+        }
+      }
+    }
+
     // Check queue size limit
     if (this.eventQueue.length >= this.config.maxQueueSize) {
       // Remove oldest events
@@ -945,6 +1263,8 @@ export class Analytics implements AnalyticsInstance {
       heatmap: "heatmap_click",
       session: "session_update",
       error: "error_event",
+      subscription: event.event || "subscription_event",
+      payment: event.event || "payment_event",
     };
 
     // For track events, use common event names
@@ -1052,6 +1372,65 @@ export class Analytics implements AnalyticsInstance {
         console.error("Failed to initialize session recording:", error);
       }
     }
+  }
+
+  private setupSubscriptionAutoDetection(): void {
+    if (typeof window === "undefined") return;
+
+    // Delay detection to allow provider SDKs to load
+    setTimeout(() => {
+      try {
+        const detection = autoDetectSubscription();
+
+        if (detection.detected && detection.subscription) {
+          if (this.config.debug) {
+            console.log(
+              `MentiQ: Auto-detected ${detection.provider} subscription (confidence: ${detection.confidence}%)`,
+              detection.subscription
+            );
+          }
+
+          // Get existing subscription data (manually set takes precedence)
+          const existingData = localStorage.getItem("mentiq_user_subscription");
+          let mergedSubscription = detection.subscription;
+
+          if (existingData) {
+            try {
+              const existing = JSON.parse(existingData);
+              // Merge: manual data takes precedence over auto-detected
+              mergedSubscription = {
+                ...detection.subscription,
+                ...existing,
+              };
+
+              if (this.config.debug) {
+                console.log(
+                  "MentiQ: Merged auto-detected with existing subscription data"
+                );
+              }
+            } catch (e) {
+              // Use auto-detected data if existing data is invalid
+            }
+          }
+
+          // Store merged subscription data
+          localStorage.setItem(
+            "mentiq_user_subscription",
+            JSON.stringify(mergedSubscription)
+          );
+        } else {
+          if (this.config.debug && detection.confidence > 0) {
+            console.log(
+              `MentiQ: Subscription detection attempted but confidence too low (${detection.confidence}%)`
+            );
+          }
+        }
+      } catch (error) {
+        if (this.config.debug) {
+          console.error("MentiQ: Subscription auto-detection failed:", error);
+        }
+      }
+    }, 1000); // Wait 1 second for provider SDKs to load
   }
 
   public startRecording(): void {
