@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       rrweb:
-        specifier: 2.0.0-alpha.4
+        specifier: '>=2.0.0-alpha.4'
         version: 2.0.0-alpha.4
     devDependencies:
       '@rollup/plugin-commonjs':
